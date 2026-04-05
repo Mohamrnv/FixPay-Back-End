@@ -223,7 +223,7 @@ const register = asyncWrapper(async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return next(new AppError("Validation failed", 400, httpStatus.FAIL, errors.array()));
 
-    const { name, userName, dateOfBirth, gender, phoneNumber, email, password, role, avatar, ssn, address } = req.body;
+    const { name, userName, dateOfBirth, gender, phoneNumber, email, password, role, avatar, ssn, address, categoryId } = req.body;
 
     const existingUser = await Services.findUserByService({ email, phoneNumber, userName, ssn });
 
@@ -271,7 +271,8 @@ const register = asyncWrapper(async (req, res, next) => {
             createdAt: new Date(),
             expiresAt: Date.now() + (10 * 60 * 1000),
             otpType: OtpTypesEnum.CONFIRMATION
-        }
+        },
+        categoryId: role === Roles.worker ? categoryId : undefined
     });
 
     try {

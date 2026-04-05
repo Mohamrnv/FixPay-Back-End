@@ -2,6 +2,9 @@ import Category from "../../Models/Category.model.js";
 import { AppError } from "../../Utils/Errors/AppError.js";
 import * as httpStatus from "../../Utils/Http/httpStatusText.js";
 import { validationResult } from "express-validator";
+import User from "../../Models/User.model.js";
+import { Roles } from "../../Utils/enums/usersRoles.js";
+
 
 export const getAllCategories = async (req, res, next) => {
     try {
@@ -14,6 +17,18 @@ export const getAllCategories = async (req, res, next) => {
         next(new AppError(error.message, 500, httpStatus.ERROR));
     }
 };
+export const getAllWorkersByCategory = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const workers = await User.find({ categoryId: id, role: Roles.worker });
+        res.status(200).json({
+            status: httpStatus.SUCCESS,
+            data: { workers }
+        });
+    } catch (error) {
+        next(new AppError(error.message, 500, httpStatus.ERROR));
+    }
+}
 
 export const getCategoryById = async (req, res, next) => {
     try {

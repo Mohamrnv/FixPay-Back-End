@@ -7,11 +7,11 @@ import { OtpTypesEnum } from "../../Utils/enums/usersRoles.js";
 import { ServiceErrorsEnum } from "../../Utils/Errors/errormessages/UserServiceErrors.js";
 
 const getAllUsersService = async () => {
-    return await User.find().lean();
+    return await User.find().populate('categoryId', 'name').lean();
 };
 
 const getUserByIdService = async (id) => {
-    return await User.findById(id).lean();
+    return await User.findById(id).populate('categoryId', 'name').lean();
 };
 const findUserByService = async (query) => {
    
@@ -35,7 +35,7 @@ const registerService = async (newUserData) => {
     const cleanUser = await User.findById(user._id, {
         password: 0,
         __v: 0
-    }).lean();
+    }).populate('categoryId', 'name').lean();
 
     return cleanUser;
 };

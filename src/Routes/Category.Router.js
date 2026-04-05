@@ -6,13 +6,16 @@ import { createCategorySchema } from "../Modules/Category/category.validation.js
 import {
     getAllCategories,
     getCategoryById,
-    createCategory
+    createCategory,
+    getAllWorkersByCategory
 } from "../Modules/Category/category.controller.js";
 
 const router = Router();
 
 router.get("/", verifyToken, getAllCategories);
+router.get("/:id/workers", verifyToken, getAllWorkersByCategory);
 router.get("/:id", verifyToken, getCategoryById);
+
 
 router.post(
     "/",

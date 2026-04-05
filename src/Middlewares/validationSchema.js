@@ -1,5 +1,6 @@
 import validator from "validator";
 import { Roles } from "../Utils/enums/usersRoles.js";
+import Category from "../Models/Category.model.js";
 //import * as httpStatus from "../Utils/HttpStatusText.ts";
 //import { AppError } from "../Utils/AppError.ts";
 const DISPOSABLE_EMAIL_DOMAINS = [
@@ -158,6 +159,27 @@ export const registerSchema = {
     "address.street": {
         optional: true,
         isString: { errorMessage: "street must be string!" }
+    },
+    categoryId: {
+        custom: {
+            options: async (value, { req }) => {
+                if (req.body.role === Roles.worker) {
+                    if (!value) {
+                        throw new Error("Category is required for workers");
+                    }
+                    const category = await Category.findById(value);
+                    if (!category) {
+                        throw new Error("Invalid category selected");
+                    }
+                } else if (value) {
+                    const category = await Category.findById(value);
+                    if (!category) {
+                        throw new Error("Invalid category selected");
+                    }
+                }
+                return true;
+            }
+        }
     }
 };
 export const confirmEmailSchema = {
@@ -306,6 +328,21 @@ export const editUserSchema = {
   avatar: {
     optional: true,
     isString: { errorMessage: "Avatar must be a string (URL or path)" }
+  },
+  categoryId: {
+    optional: true,
+    isMongoId: { errorMessage: "Invalid Category ID format" },
+    custom: {
+      options: async (value) => {
+        if (value) {
+          const category = await Category.findById(value);
+          if (!category) {
+            throw new Error("Category not found");
+          }
+        }
+        return true;
+      }
+    }
   }
 };
 export const forgotPasswordSchema = {
