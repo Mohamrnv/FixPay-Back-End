@@ -1,5 +1,6 @@
 import express from 'express';
 import userRouter from './Routes/User.Router.js';
+import categoryRouter from './Routes/Category.Router.js';
 import "dotenv/config";
 import dbConnection from './DB/db.connection.js';
 import * as httpStatus from "./Utils/Http/httpStatusText.js"
@@ -12,6 +13,7 @@ dbConnection();
 app.use(express.json());
 
 app.use('/api/user',userRouter);
+app.use('/api/categories', categoryRouter);
 
 app.use((req, res) => {
     res.status(404).json({

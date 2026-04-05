@@ -2,6 +2,8 @@ import { Router } from "express";
 import { checkSchema } from "express-validator";
 import { verifyToken } from "../Middlewares/verifytoken.js";
 import { loginSchema, registerSchema, forgotPasswordSchema, resetPasswordSchema } from "../Middlewares/validationSchema.js";
+import { allowedTo } from "../Middlewares/allowedTo.js";
+import { Roles } from "../Utils/enums/usersRoles.js";
 import {localFileUpload} from '../multer/multer.js'
 import { normalizeAuthFields } from "../Middlewares/normalizeInput.js";
 import express from "express"
@@ -19,7 +21,8 @@ import {
     resetPassword,
     resendResetPasswordOtp,
     profileImage,
-    restoreDeletedAccount
+    restoreDeletedAccount,
+    assignAdmin
 } from "../Modules/User/user.controller.js";
 
 const router = Router();
@@ -29,6 +32,7 @@ router.get("/", verifyToken, getAllUsers);
 router.get("/:id", verifyToken, getUserById);
 router.patch("/:id", verifyToken, editUser);
 router.delete("/:id", verifyToken, deleteUser);
+router.patch("/assign-admin/:id", verifyToken, allowedTo(Roles.admin), assignAdmin);
 
 router.post("/register", normalizeAuthFields, checkSchema(registerSchema), register);
 router.post("/login", normalizeAuthFields, checkSchema(loginSchema), login);

@@ -593,6 +593,29 @@ const profileImage = asyncWrapper(async (req, res, next) => {
         file: user
     });
 });
+const assignAdmin = asyncWrapper(async (req, res, next) => {
+    const { id } = req.params;
+    if (!id) {
+        return next(new AppError(httpMessage.BAD_REQUEST, 400, httpStatus.FAIL));
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+        id,
+        { role: Roles.admin },
+        { new: true, select: "-password -__v" }
+    );
+
+    if (!updatedUser) {
+        return next(new AppError(httpMessage.NOT_FOUND, 404, httpStatus.FAIL));
+    }
+
+    res.status(200).json({
+        status: httpStatus.SUCCESS,
+        data: { user: updatedUser },
+        message: "User promoted to admin successfully"
+    });
+});
+
 export {
     getAllUsers,
     getUserById,
@@ -607,5 +630,6 @@ export {
     resetPassword,
     resendResetPasswordOtp,
     profileImage,
-    restoreDeletedAccount
+    restoreDeletedAccount,
+    assignAdmin
 };
