@@ -1,44 +1,18 @@
-# Dependencies
+# =========================
+# Node.js
+# =========================
+
 node_modules/
 package-lock.json
 
-# Environment variables
-.env
-.env.local
-.env.development
-.env.test
-.env.production
-
 # Logs
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-logs/
 
-# OS files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-desktop.ini
-
-# IDE files
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# Uploads and user-generated content
-uploads/
-temp/
-tmp/
-
-# Build files
+# Build folders
 dist/
 build/
 out/
@@ -47,10 +21,88 @@ out/
 coverage/
 .nyc_output/
 
-# Output files
-*.txt
+# =========================
+# Environment Variables
+# =========================
+
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# =========================
+# Python / FastAPI
+# =========================
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+venv/
+.venv/
+env/
+id_env/
+
+# Python build files
+*.egg-info/
+.eggs/
+
+# Python databases
+*.sqlite3
+
+# =========================
+# AI / ML Files
+# =========================
+
+# Model weights
+models/
+*.pt
+*.pth
+*.onnx
+*.h5
+*.ckpt
+*.pb
+
+# Results / generated files
+results/
+
+# =========================
+# Uploads & temp
+# =========================
+
+uploads/
+temp/
+tmp/
 
 # Temporary files
 *.tmp
 *.bak
 *.cache
+*.txt
+
+# =========================
+# IDE
+# =========================
+
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# =========================
+# OS files
+# =========================
+
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini

@@ -2,27 +2,30 @@ import { Router } from "express";
 import { checkSchema } from "express-validator";
 import { verifyToken } from "../Middlewares/verifytoken.js";
 import { loginSchema, registerSchema, forgotPasswordSchema, resetPasswordSchema } from "../Middlewares/validationSchema.js";
+import { localFileUpload, memoryFileUpload } from '../multer/multer.js';
 import { allowedTo } from "../Middlewares/allowedTo.js";
 import { Roles } from "../Utils/enums/usersRoles.js";
-import {localFileUpload} from '../multer/multer.js'
 import { normalizeAuthFields } from "../Middlewares/normalizeInput.js";
 import express from "express"
 import {
-    editUser,
-    getAllUsers,
-    getUserById,
-    deleteUser,
-    register,
-    login,
-    confirmEmail,
-    resendConfirmationOtp,
-    logout,
-    forgotPassword,
-    resetPassword,
-    resendResetPasswordOtp,
-    profileImage,
-    restoreDeletedAccount,
-    assignAdmin
+  editUser,
+  getAllUsers,
+  getUserById,
+  deleteUser,
+  register,
+  login,
+  confirmEmail,
+  resendConfirmationOtp,
+  logout,
+  forgotPassword,
+  resetPassword,
+  resendResetPasswordOtp,
+  profileImage,
+  restoreDeletedAccount,
+  assignAdmin,
+  googleLogin,
+  completeProfile,
+  verifyIdentity
 } from "../Modules/User/user.controller.js";
 
 const router = Router();
@@ -39,15 +42,27 @@ router.post("/login", normalizeAuthFields, checkSchema(loginSchema), login);
 router.post("/logout", verifyToken, logout);
 router.post("/confirmEmail", verifyToken, confirmEmail);
 router.post("/resend-confirmation-otp", verifyToken, resendConfirmationOtp);
+router.post("/complete-profile", verifyToken, completeProfile);
+router.post("/google-login", googleLogin);
+
+router.post("/verify-identity",
+  verifyToken,
+  memoryFileUpload().fields([
+    { name: "id_image", maxCount: 1 },
+    { name: "live_image", maxCount: 1 }
+  ]),
+  verifyIdentity
+);
+
 router.post(
   "/upload",
-verifyToken,
-  localFileUpload({ customPath: "user" }).single("file",1),
+  verifyToken,
+  localFileUpload({ customPath: "user" }).single("file"),
   profileImage
 );
 
-router.post("/forgotPassword", normalizeAuthFields, checkSchema(forgotPasswordSchema), forgotPassword); 
-router.post("/resend-resetpassword-otp", normalizeAuthFields,checkSchema(forgotPasswordSchema), resendResetPasswordOtp);
+router.post("/forgotPassword", normalizeAuthFields, checkSchema(forgotPasswordSchema), forgotPassword);
+router.post("/resend-resetpassword-otp", normalizeAuthFields, checkSchema(forgotPasswordSchema), resendResetPasswordOtp);
 router.post("/resetPassword", normalizeAuthFields, checkSchema(resetPasswordSchema), resetPassword);
 
 

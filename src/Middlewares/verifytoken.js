@@ -27,6 +27,8 @@ export const verifyToken = async (req, res, next) => {
 
         try {
             const decoded = Jwt.verify(token, secret);
+           
+            
             const isSessionEnded = await blackListedTokenModel.findOne({
                 tokenId: decoded.jti
             });
@@ -39,7 +41,7 @@ export const verifyToken = async (req, res, next) => {
             }
             req.currentUser = {
                 ...decoded,
-                _id: decoded._id
+                _id: decoded.userId
             };
 
             console.log({ user: req.currentUser._id });

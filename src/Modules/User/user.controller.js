@@ -17,8 +17,176 @@ import { customAlphabet } from "nanoid";
 import cloudinary from "../../Utils/cloud/cloudinary.js";
 import fs from "fs";
 import { ServiceErrorsEnum } from "../../Utils/Errors/errormessages/UserServiceErrors.js";
+import { OAuth2Client } from 'google-auth-library';
+import jwt from 'jsonwebtoken';
+import axios    from "axios";
+import FormData from "form-data";
 const generateOtp = customAlphabet('0123456789', 6);
+const PYTHON_API_URL = process.env.PYTHON_API_URL ?? "http://localhost:5000";
+const verifyIdentity = asyncWrapper(async (req, res, next) => {
+    const { id_image, live_image } = req.files;
+    if (!id_image || !live_image) return next(new AppError("Images required", 400));
 
+    try {
+        const form = new FormData();
+        form.append("id_image", id_image[0].buffer, { filename: "id.jpg" });
+        form.append("live_image", live_image[0].buffer, { filename: "live.jpg" });
+
+        const { data } = await axios.post(`${PYTHON_API_URL}/verify`, form, {
+            headers: form.getHeaders(),
+            timeout: 40000 
+        });
+        const isSsnMatch = String(req.currentUser.ssn).trim() === String(data.extracted_data.national_id).trim();
+        
+    
+        const userBirthDate = new Date(req.currentUser.dateOfBirth).toISOString().split('T')[0];
+        const isBirthMatch = userBirthDate === data.extracted_data.birth_date;
+
+        const isOverallValid = data.match && isSsnMatch && isBirthMatch;
+
+        const updateData = isOverallValid ? {
+            "identityVerification.status": "verified",
+            "identityVerification.verifiedAt": new Date(),
+            "identityVerification.similarity": data.similarity,
+            "identityVerification.liveness": data.liveness,
+            "identityVerification.failReason": null
+        } : {
+            "identityVerification.status": "failed",
+            "identityVerification.failReason": !isSsnMatch ? "ID Number Mismatch" : "Face Mismatch"
+        };
+
+        await User.findByIdAndUpdate(req.currentUser._id, updateData);
+
+        return res.status(200).json({ 
+            status: "success", 
+            match: isOverallValid,
+            details: { ssnMatch: isSsnMatch, faceMatch: data.match }
+        });
+
+    } catch (err) {
+        return next(new AppError("Verification Service Error", 503));
+    }
+});
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_WEB_CLIENT_ID);
+const googleLogin = asyncWrapper(async (req, res, next) => {
+    const { token } = req.body;
+
+    if (!token) {
+        return res.status(400).json({ message: 'Google token is required' });
+    }
+
+    const ticket = await googleClient.verifyIdToken({
+      idToken: token,
+      audience: process.env.GOOGLE_WEB_CLIENT_ID, 
+    });
+    const payload = ticket.getPayload();
+    const { 
+      sub: googleId, 
+      email, 
+      given_name, 
+      family_name, 
+      picture, 
+      email_verified 
+    } = payload;
+
+    let user = await User.findOne({ email });
+    if (user) {
+      if (!user.googleId) {
+        user.googleId = googleId;
+        if (!user.avatar) user.avatar = picture;
+        if (!user.verifiedAt && email_verified) user.verifiedAt = Date.now();
+        await user.save();
+      }
+    } else {
+      const baseUserName = email.split('@')[0];
+      const randomSuffix = Math.floor(1000 + Math.random() * 9000); 
+      const uniqueUserName = `${baseUserName}${randomSuffix}`;
+
+      user = new User({
+        googleId,
+        name: {
+            first: given_name,
+            last: family_name || '' 
+        },
+        userName: uniqueUserName, 
+        email,
+        avatar: picture,
+        verifiedAt: email_verified ? Date.now() : null, 
+        role: 'user' 
+      });
+      await user.save();
+    }
+
+    const systemToken = jwt.sign(
+      { userId: user._id, email: user.email, role: user.role },
+      process.env.JWT_KEY, 
+      { expiresIn: '30d' } 
+    );
+
+    const needsPhoneNumber = user.phoneNumber ? false : true;
+    const needsSSn=user.ssn ? false:true ;
+    res.status(200).json({
+      message: 'Login successful',
+      token: systemToken,
+      needsPhoneNumber, 
+      needsSSn,
+      user: {
+        id: user._id,
+        userName: user.userName,
+        name: user.name,
+        email: user.email,
+        phoneNumber: user.phoneNumber, 
+        avatar: user.avatar,
+        role: user.role
+      },
+    });
+});
+ const completeProfile = asyncWrapper(async (req, res, next) => {
+    const { phoneNumber,ssn } = req.body;
+    const userId = req.currentUser._id; 
+    console.log({user:req.currentUser});
+    
+    if (!phoneNumber) {
+        return next(new AppError("Phone number is required", 400, httpStatus.FAIL));
+    }
+     if (!ssn) {
+        return next(new AppError("Phone number is required", 400, httpStatus.FAIL));
+    }
+    const existingPhone = await User.findOne({ phoneNumber });
+    if (existingPhone) {
+        return next(new AppError("Phone number is already in use", 409, httpStatus.FAIL));
+    }
+    const existingSSN = await User.findOne({ ssn });
+     if (existingSSN) {
+        return next(new AppError("SSN is already in use", 409, httpStatus.FAIL));
+    }
+    const updatedUser = await User.findByIdAndUpdate(
+        userId,
+        { phoneNumber: phoneNumber ,ssn:ssn},
+        { new: true, runValidators: true } 
+    );
+
+    if (!updatedUser) {
+        return next(new AppError("User not found", 404, httpStatus.FAIL));
+    }
+    res.status(200).json({
+        status: httpStatus.SUCCESS,
+        message: 'Profile completed successfully',
+        data: {
+            user: {
+                _id: updatedUser._id,
+                userName: updatedUser.userName,
+                name: updatedUser.name,
+                email: updatedUser.email,
+                phoneNumber: updatedUser.phoneNumber, 
+                ssn:updatedUser.ssn,
+                avatar: updatedUser.avatar,
+                role: updatedUser.role
+            }
+        }
+    });
+});
 const getAllUsers = asyncWrapper(async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -51,7 +219,7 @@ const getUserById = asyncWrapper(async (req, res, next) => {
     });
 });
 const register = asyncWrapper(async (req, res, next) => {
-   
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) return next(new AppError("Validation failed", 400, httpStatus.FAIL, errors.array()));
 
@@ -62,7 +230,7 @@ const register = asyncWrapper(async (req, res, next) => {
     if (existingUser) {
         return next(new AppError("Registration failed. Information unavailable.", 400, httpStatus.FAIL));
     }
-    
+
 
     let parsedDateOfBirth = null;
     if (dateOfBirth) {
@@ -71,14 +239,14 @@ const register = asyncWrapper(async (req, res, next) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
-    
+
     const otp = generateOtp();
     const hashOtp = generateHash(otp);
 
     if (process.env.NODE_ENV !== 'production') {
         console.log(' Registration OTP:', otp);
     }
-    
+
     const newUser = new User({
         name: {
             first: name.first.trim(),
@@ -107,20 +275,20 @@ const register = asyncWrapper(async (req, res, next) => {
     });
 
     try {
-        const user = await Services.registerService(newUser); 
-        
+        const user = await Services.registerService(newUser);
+
         const token = Jwt.sign(
             { email: user.email, _id: user._id, role: user.role, jti: uuidv4() },
             process.env.JWT_KEY,
-            { expiresIn: '30m' } 
+            { expiresIn: '30m' }
         );
 
-        localEmmiter.emit('sendEmail', { 
-            to: user.email, 
-            subject: "OTP for Account Verification", 
-            content: htmlOtpTemp(otp) 
+        localEmmiter.emit('sendEmail', {
+            to: user.email,
+            subject: "OTP for Account Verification",
+            content: htmlOtpTemp(otp)
         });
-    
+
         res.status(201).json({
             status: httpStatus.SUCCESS,
             message: "Registration successful. Please verify your email.",
@@ -131,10 +299,10 @@ const register = asyncWrapper(async (req, res, next) => {
                     userName: user.userName,
                     role: user.role
                 },
-                token: token 
+                token: token
             }
         });
-    
+
     } catch (err) {
         if (err.code === 11000) {
             const errorMessage = process.env.NODE_ENV === 'production'
@@ -163,22 +331,22 @@ const login = asyncWrapper(async (req, res, next) => {
         const token = Jwt.sign(
             { email: user.email, _id: user._id, role: user.role, jti: uuidv4() },
             process.env.JWT_KEY,
-            { expiresIn: '30m' } 
+            { expiresIn: '30m' }
         );
-            
+
         if (user.deleted) {
-          if (Date.now() <= user.restoreUntil.getTime()) {
-            
-            const restored = await Services.restoreDeletedUserService(user._id);
-            if (!restored) {
-              return next(new AppError("Invalid email or password", 401, httpStatus.FAIL));
+            if (Date.now() <= user.restoreUntil.getTime()) {
+
+                const restored = await Services.restoreDeletedUserService(user._id);
+                if (!restored) {
+                    return next(new AppError("Invalid email or password", 401, httpStatus.FAIL));
+                }
+            } else {
+
+                return next(
+                    new AppError("Your account can no longer be restored", 403, httpStatus.FAIL)
+                );
             }
-          } else {
-            
-            return next(
-              new AppError("Your account can no longer be restored", 403, httpStatus.FAIL)
-            );
-          }
         }
 
         return res.status(200).json({
@@ -261,7 +429,7 @@ const confirmEmail = asyncWrapper(async (req, res, next) => {
 });
 const resendConfirmationOtp = asyncWrapper(async (req, res, next) => {
     const RESEND_COOLDOWN_MS = 60 * 1000;
-    
+
     const user = await User.findById(req.currentUser._id);
 
     if (!user) {
@@ -274,7 +442,7 @@ const resendConfirmationOtp = asyncWrapper(async (req, res, next) => {
 
     if (user.otp?.createdAt && user.otp?.expiresAt > Date.now()) {
         const timeSince = Date.now() - new Date(user.otp.createdAt).getTime();
-        
+
         if (timeSince < RESEND_COOLDOWN_MS) {
             const timeLeft = Math.ceil((RESEND_COOLDOWN_MS - timeSince) / 1000);
             return next(
@@ -297,7 +465,7 @@ const resendConfirmationOtp = asyncWrapper(async (req, res, next) => {
     user.otp = {
         value: hashedOtp,
         createdAt: new Date(),
-        expiresAt: Date.now() + 10 * 60 * 1000, 
+        expiresAt: Date.now() + 10 * 60 * 1000,
         otpType: OtpTypesEnum.CONFIRMATION,
     };
 
@@ -380,30 +548,30 @@ const deleteUser = asyncWrapper(async (req, res, next) => {
     res.status(200).json({
         status: httpStatus.SUCCESS,
         data: deleted,
-        token:data,
-        days : "you have 30 days to restore your account",
-        restore_until :deleted.restoreUntil
+        token: data,
+        days: "you have 30 days to restore your account",
+        restore_until: deleted.restoreUntil
     });
 });
 const restoreDeletedAccount = asyncWrapper(async (req, res, next) => {
     const userId = req.currentUser._id;
     const restored = Services.restoreDeletedUserService(userId);
-    
-    if(!restored) return next(new AppError(httpMessage.NOT_FOUND,404,httpStatus.NOT_FOUND));
-    
+
+    if (!restored) return next(new AppError(httpMessage.NOT_FOUND, 404, httpStatus.NOT_FOUND));
+
     return res.status(200).json({
         status: httpStatus.SUCCESS,
         message: "Your account has been restored successfully",
         data: {
-            _id: restored._id,     
-            email: restored.email,   
-            userName: restored.userName 
+            _id: restored._id,
+            email: restored.email,
+            userName: restored.userName
         }
     });
 });
 const forgotPassword = asyncWrapper(async (req, res, next) => {
     const errors = validationResult(req);
-    const STRICT_COOLDOWN_MS = 60 * 1000; 
+    const STRICT_COOLDOWN_MS = 60 * 1000;
     const { email } = req.body;
 
     if (!errors.isEmpty()) {
@@ -413,13 +581,13 @@ const forgotPassword = asyncWrapper(async (req, res, next) => {
     }
 
     const existingUser = await User.findOne({ email });
-    
-    if (existingUser && existingUser.resetPassword?.createdAt) { 
-        
 
-        const otpExpired = existingUser.resetPassword.expiresAt && 
-                          existingUser.resetPassword.expiresAt < Date.now();
-        
+    if (existingUser && existingUser.resetPassword?.createdAt) {
+
+
+        const otpExpired = existingUser.resetPassword.expiresAt &&
+            existingUser.resetPassword.expiresAt < Date.now();
+
         if (!otpExpired) {
             const lastRequestTime = new Date(existingUser.resetPassword.createdAt).getTime();
             const timeSinceLastRequest = Date.now() - lastRequestTime;
@@ -447,9 +615,9 @@ const forgotPassword = asyncWrapper(async (req, res, next) => {
             });
         }
 
-         if (process.env.NODE_ENV !== 'production') {
-                console.log("🔑 Reset Password OTP:", resetOtp);
-            }
+        if (process.env.NODE_ENV !== 'production') {
+            console.log("🔑 Reset Password OTP:", resetOtp);
+        }
 
         localEmmiter.emit('sendEmail', {
             to: email,
@@ -469,7 +637,7 @@ const forgotPassword = asyncWrapper(async (req, res, next) => {
 
         console.error("Forgot password error:", error);
         return next(new AppError("An error occurred while processing your request", 500, httpStatus.ERROR));
-        }
+    }
 });
 const resetPassword = asyncWrapper(async (req, res, next) => {
     const errors = validationResult(req);
@@ -480,7 +648,7 @@ const resetPassword = asyncWrapper(async (req, res, next) => {
     }
 
     const { email, otp, newPassword } = req.body;
-    
+
     if (!email || !otp || !newPassword) {
         return next(new AppError("Email, OTP and new password are required", 400, httpStatus.FAIL));
     }
@@ -508,7 +676,7 @@ const resendResetPasswordOtp = asyncWrapper(async (req, res, next) => {
     const RESEND_COOLDOWN_MS = 60 * 1000;
 
     const user = await User.findOne({ email });
-    
+
     if (!user) {
         return res.status(200).json({
             status: httpStatus.SUCCESS,
@@ -518,7 +686,7 @@ const resendResetPasswordOtp = asyncWrapper(async (req, res, next) => {
 
     if (user.resetPassword?.createdAt && user.resetPassword?.expiresAt > Date.now()) {
         const timeSince = Date.now() - new Date(user.resetPassword.createdAt).getTime();
-        
+
         if (timeSince < RESEND_COOLDOWN_MS) {
             const timeLeft = Math.ceil((RESEND_COOLDOWN_MS - timeSince) / 1000);
             return next(
@@ -587,7 +755,7 @@ const profileImage = asyncWrapper(async (req, res, next) => {
         { avatar: result.secure_url },
         { new: true }
     );
-    
+
     return res.status(200).json({
         message: "Profile image updated successfully",
         file: user
@@ -631,5 +799,8 @@ export {
     resendResetPasswordOtp,
     profileImage,
     restoreDeletedAccount,
-    assignAdmin
+    assignAdmin,
+    googleLogin,
+    completeProfile,
+    verifyIdentity
 };

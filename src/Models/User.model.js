@@ -17,11 +17,7 @@ const usersSchema = new mongoose.Schema({
     gender: {
         type: Boolean // false = male, true = female
     },
-    phoneNumber: {
-        type: String,
-        unique: true
-        
-    },
+    
     email: {
         type: String,
         unique: true,
@@ -89,6 +85,28 @@ const usersSchema = new mongoose.Schema({
     deleted:{
         type :Boolean,
         default:false
+    },
+    phoneNumber: {
+        type: String,
+        unique: true,
+        sparse: true 
+    },
+    googleId: { 
+        type: String,
+        unique: true,
+        sparse: true 
+    },
+     identityVerification: {
+        status: {
+            type: String,
+            enum: ["unverified", "pending", "verified", "failed"],
+            default: "unverified"
+        },
+        similarity:  { type: Number },
+        confidence:  { type: String },
+        liveness:    { type: Boolean },
+        verifiedAt:  { type: Date },
+        failReason:  { type: String },
     }
 
 });
