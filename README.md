@@ -105,7 +105,11 @@ Welcome to the **FixPay Back-End**, a robust and secure RESTful API built with *
 - `POST /` - (Admin) Create a new category.
 
 ### 📋 Task Routes (`/api/tasks`)
-- `POST /` - Create a new service task (job request).
+- `GET /open` - List all available (open) tasks with pagination.
+- `POST /` - Create a new service task (job request). Supports up to 5 image uploads.
+
+### 🏷️ Offer Routes (`/api/offers`)
+- `POST /` - (Worker) Submit a bid/offer for an open task.
 
 ---
 

@@ -2,6 +2,7 @@ import express from 'express';
 import userRouter from './Routes/User.Router.js';
 import categoryRouter from './Routes/Category.Router.js';
 import taskRouter from './Routes/Task.Router.js';
+import offerRouter from './Routes/Offer.Router.js';
 import "dotenv/config";
 import dbConnection from './DB/db.connection.js';
 import * as httpStatus from "./Utils/Http/httpStatusText.js"
@@ -16,6 +17,7 @@ app.use(express.json());
 app.use('/api/user',userRouter);
 app.use('/api/categories', categoryRouter);
 app.use('/api/tasks', taskRouter);
+app.use('/api/offers', offerRouter);
 
 app.use((req, res) => {
     res.status(404).json({

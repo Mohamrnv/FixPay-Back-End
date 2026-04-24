@@ -41,10 +41,8 @@ export const verifyToken = async (req, res, next) => {
             }
             req.currentUser = {
                 ...decoded,
-                _id: decoded.userId
+                _id: decoded.userId || decoded._id
             };
-
-            console.log({ user: req.currentUser._id });
 
             next();
         } catch (err) {
