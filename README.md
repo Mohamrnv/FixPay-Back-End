@@ -111,6 +111,7 @@ Welcome to the **FixPay Back-End**, a robust and secure RESTful API built with *
 
 ### 🏷️ Offer Routes (`/api/offers`)
 - `POST /` - (Worker) Submit a bid/offer for an open task.
+- `PATCH /:offerId/accept` - (Customer) Accept a specific offer and assign the worker to the task.
 
 ---
 

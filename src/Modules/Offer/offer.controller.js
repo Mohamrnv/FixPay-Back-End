@@ -7,6 +7,52 @@ import { validationResult } from "express-validator";
 import { asyncWrapper } from "../../Utils/Errors/ErrorWrapper.js";
 import { TaskStatus } from "../../Utils/enums/taskStatus.js";
 import { Roles } from "../../Utils/enums/usersRoles.js";
+import { OfferStatus } from "../../Utils/enums/offerStatus.js";
+
+// ... existing controllers ...
+
+export const acceptOffer = asyncWrapper(async (req, res, next) => {
+    const { offerId } = req.params;
+
+    const offer = await Offer.findById(offerId);
+    if (!offer) {
+        return next(new AppError("Offer not found", 404, httpStatus.FAIL));
+    }
+
+    const task = await Task.findById(offer.taskId);
+    if (!task) {
+        return next(new AppError("Task related to this offer not found", 404, httpStatus.FAIL));
+    }
+
+    // Authorization: Only the owner of the task can accept offers
+    if (task.customerId.toString() !== req.currentUser._id.toString()) {
+        return next(new AppError("Not authorized to accept offers for this task", 403, httpStatus.FAIL));
+    }
+
+    if (task.status !== TaskStatus.OPEN) {
+        return next(new AppError("Task is no longer open for accepting offers", 400, httpStatus.FAIL));
+    }
+
+    // Update statuses
+    offer.status = OfferStatus.ACCEPTED;
+    await offer.save();
+
+    task.status = TaskStatus.ASSIGNED;
+    task.workerId = offer.workerId;
+    await task.save();
+
+    // Reject all other offers for this task
+    await Offer.updateMany(
+        { taskId: task._id, _id: { $ne: offerId } },
+        { status: OfferStatus.REJECTED }
+    );
+
+    res.status(200).json({
+        status: httpStatus.SUCCESS,
+        message: "Offer accepted and worker assigned successfully",
+        data: { task, acceptedOffer: offer }
+    });
+});
 
 export const createOffer = asyncWrapper(async (req, res, next) => {
     const errors = validationResult(req);
