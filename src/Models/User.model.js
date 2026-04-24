@@ -1,118 +1,136 @@
 import mongoose from "mongoose";
 import validator from "validator";
 import { Roles } from "../Utils/enums/usersRoles.js";
-import{OtpTypesEnum} from '../Utils/enums/usersRoles.js'
+import { OtpTypesEnum } from '../Utils/enums/usersRoles.js'
+import { encrypt, decrypt } from "../Utils/Encrypt/crypt.js";
+
 const usersSchema = new mongoose.Schema({
     name: {
-        first: String,
-        last: String
+        first: { type: String, set: (v) => encrypt(v), get: (v) => decrypt(v) },
+        last: { type: String, set: (v) => encrypt(v), get: (v) => decrypt(v) }
     },
     userName: {
         type: String,
-        unique: true
+        unique: true,
+        set: (v) => encrypt(v),
+        get: (v) => decrypt(v)
     },
     dateOfBirth: {
-        type: Date
+        type: String,
+        set: (v) => encrypt(v),
+        get: (v) => decrypt(v)
     },
     gender: {
         type: Boolean // false = male, true = female
     },
-    
+
     email: {
         type: String,
         unique: true,
-        validate : [validator.isEmail,"field must be a valid email"]
+        set: (v) => encrypt(v),
+        get: (v) => decrypt(v)
     },
     password: {
         type: String,
-
+        select: false
     },
     createdAt: {
         type: Date,
         default: Date.now
     },
-    role:{
+    role: {
         type: String,
-        enum : [...Object.values(Roles)],
-        default :Roles.user
+        enum: [...Object.values(Roles)],
+        default: Roles.user
     },
-    avatar :{
-        type : String
+    avatar: {
+        type: String
     },
-    rating : {
-        type :Number, //{1->5}
-        default : 5
+    rating: {
+        type: Number, //{1->5}
+        default: 5
     },
-    ssn : {
-        type: Number,
+    ssn: {
+        type: String,
         unique: true,
         sparse: true,
+        select: false,
+        set: (v) => encrypt(v),
+        get: (v) => decrypt(v)
     },
-    address :{
-        government:String,
-        city :String,
-        street:String,
+    address: {
+        government: { type: String, set: (v) => encrypt(v), get: (v) => decrypt(v) },
+        city: { type: String, set: (v) => encrypt(v), get: (v) => decrypt(v) },
+        street: { type: String, set: (v) => encrypt(v), get: (v) => decrypt(v) },
     }
     ,
     otp: {
-        value: String,
-        createdAt: Date,  
-        expiresAt: Date,
+        value: { type: String, select: false },
+        createdAt: { type: Date, select: false },
+        expiresAt: { type: Date, select: false },
         otpType: {
-            type:String,
-            enum:[...Object.values(OtpTypesEnum)]
+            type: String,
+            enum: [...Object.values(OtpTypesEnum)],
+            select: false
         }
     }
     ,
-    verifiedAt:{
-        type:Date
+    verifiedAt: {
+        type: Date
     },
     resetPassword: {
-        value: String,   
-        createdAt: Date,
-        expiresAt: Date,
-        otpType: {          
+        value: { type: String, select: false },
+        createdAt: { type: Date, select: false },
+        expiresAt: { type: Date, select: false },
+        otpType: {
             type: String,
-            enum: [...Object.values(OtpTypesEnum)] 
+            enum: [...Object.values(OtpTypesEnum)],
+            select: false
         }
     },
-    deletedAt :{
-        type:Date
+    deletedAt: {
+        type: Date
     },
-    restoreUntil:{
-        type:Date
+    restoreUntil: {
+        type: Date
     },
-    deleted:{
-        type :Boolean,
-        default:false
+    deleted: {
+        type: Boolean,
+        default: false
     },
     phoneNumber: {
         type: String,
         unique: true,
-        sparse: true 
+        sparse: true,
+        set: (v) => encrypt(v),
+        get: (v) => decrypt(v)
     },
-    googleId: { 
+    googleId: {
         type: String,
         unique: true,
-        sparse: true 
+        sparse: true,
+        select: false
     },
-     identityVerification: {
+    identityVerification: {
         status: {
             type: String,
             enum: ["unverified", "pending", "verified", "failed"],
             default: "unverified"
         },
-        similarity:  { type: Number },
-        confidence:  { type: String },
-        liveness:    { type: Boolean },
-        verifiedAt:  { type: Date },
-        failReason:  { type: String },
+        similarity: { type: Number },
+        confidence: { type: String },
+        liveness: { type: Boolean },
+        verifiedAt: { type: Date },
+        failReason: { type: String },
     },
     categoryId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Category'
     }
 
+}, {
+    toJSON: { getters: true },
+    toObject: { getters: true }
 });
 
 const User = mongoose.model("Users", usersSchema, "Users");

@@ -19,13 +19,17 @@ import fs from "fs";
 import { ServiceErrorsEnum } from "../../Utils/Errors/errormessages/UserServiceErrors.js";
 import { OAuth2Client } from 'google-auth-library';
 import jwt from 'jsonwebtoken';
-import axios    from "axios";
+import axios from "axios";
 import FormData from "form-data";
 const generateOtp = customAlphabet('0123456789', 6);
 const PYTHON_API_URL = process.env.PYTHON_API_URL ?? "http://localhost:5000";
 const verifyIdentity = asyncWrapper(async (req, res, next) => {
     const { id_image, live_image } = req.files;
     if (!id_image || !live_image) return next(new AppError("Images required", 400));
+
+    // Fetch user from DB to get sensitive data (SSN, DOB) which aren't in the token
+    const user = await User.findById(req.currentUser._id).select("+ssn +dateOfBirth");
+    if (!user) return next(new AppError("User not found", 404));
 
     try {
         const form = new FormData();
@@ -34,12 +38,12 @@ const verifyIdentity = asyncWrapper(async (req, res, next) => {
 
         const { data } = await axios.post(`${PYTHON_API_URL}/verify`, form, {
             headers: form.getHeaders(),
-            timeout: 40000 
+            timeout: 40000
         });
-        const isSsnMatch = String(req.currentUser.ssn).trim() === String(data.extracted_data.national_id).trim();
         
-    
-        const userBirthDate = new Date(req.currentUser.dateOfBirth).toISOString().split('T')[0];
+        const isSsnMatch = String(user.ssn).trim() === String(data.extracted_data.national_id).trim();
+
+        const userBirthDate = new Date(user.dateOfBirth).toISOString().split('T')[0];
         const isBirthMatch = userBirthDate === data.extracted_data.birth_date;
 
         const isOverallValid = data.match && isSsnMatch && isBirthMatch;
@@ -57,8 +61,8 @@ const verifyIdentity = asyncWrapper(async (req, res, next) => {
 
         await User.findByIdAndUpdate(req.currentUser._id, updateData);
 
-        return res.status(200).json({ 
-            status: "success", 
+        return res.status(200).json({
+            status: "success",
             match: isOverallValid,
             details: { ssnMatch: isSsnMatch, faceMatch: data.match }
         });
@@ -77,80 +81,80 @@ const googleLogin = asyncWrapper(async (req, res, next) => {
     }
 
     const ticket = await googleClient.verifyIdToken({
-      idToken: token,
-      audience: process.env.GOOGLE_WEB_CLIENT_ID, 
+        idToken: token,
+        audience: process.env.GOOGLE_WEB_CLIENT_ID,
     });
     const payload = ticket.getPayload();
-    const { 
-      sub: googleId, 
-      email, 
-      given_name, 
-      family_name, 
-      picture, 
-      email_verified 
+    const {
+        sub: googleId,
+        email,
+        given_name,
+        family_name,
+        picture,
+        email_verified
     } = payload;
 
     let user = await User.findOne({ email });
     if (user) {
-      if (!user.googleId) {
-        user.googleId = googleId;
-        if (!user.avatar) user.avatar = picture;
-        if (!user.verifiedAt && email_verified) user.verifiedAt = Date.now();
-        await user.save();
-      }
+        if (!user.googleId) {
+            user.googleId = googleId;
+            if (!user.avatar) user.avatar = picture;
+            if (!user.verifiedAt && email_verified) user.verifiedAt = Date.now();
+            await user.save();
+        }
     } else {
-      const baseUserName = email.split('@')[0];
-      const randomSuffix = Math.floor(1000 + Math.random() * 9000); 
-      const uniqueUserName = `${baseUserName}${randomSuffix}`;
+        const baseUserName = email.split('@')[0];
+        const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+        const uniqueUserName = `${baseUserName}${randomSuffix}`;
 
-      user = new User({
-        googleId,
-        name: {
-            first: given_name,
-            last: family_name || '' 
-        },
-        userName: uniqueUserName, 
-        email,
-        avatar: picture,
-        verifiedAt: email_verified ? Date.now() : null, 
-        role: 'user' 
-      });
-      await user.save();
+        user = new User({
+            googleId,
+            name: {
+                first: given_name,
+                last: family_name || ''
+            },
+            userName: uniqueUserName,
+            email,
+            avatar: picture,
+            verifiedAt: email_verified ? Date.now() : null,
+            role: 'user'
+        });
+        await user.save();
     }
 
     const systemToken = jwt.sign(
-      { userId: user._id, email: user.email, role: user.role },
-      process.env.JWT_KEY, 
-      { expiresIn: '30d' } 
+        { userId: user._id, email: user.email, role: user.role },
+        process.env.JWT_KEY,
+        { expiresIn: '30d' }
     );
 
     const needsPhoneNumber = user.phoneNumber ? false : true;
-    const needsSSn=user.ssn ? false:true ;
+    const needsSSn = user.ssn ? false : true;
     res.status(200).json({
-      message: 'Login successful',
-      token: systemToken,
-      needsPhoneNumber, 
-      needsSSn,
-      user: {
-        id: user._id,
-        userName: user.userName,
-        name: user.name,
-        email: user.email,
-        phoneNumber: user.phoneNumber, 
-        avatar: user.avatar,
-        role: user.role
-      },
+        message: 'Login successful',
+        token: systemToken,
+        needsPhoneNumber,
+        needsSSn,
+        user: {
+            id: user._id,
+            userName: user.userName,
+            name: user.name,
+            email: user.email,
+            phoneNumber: user.phoneNumber,
+            avatar: user.avatar,
+            role: user.role
+        },
     });
 });
- const completeProfile = asyncWrapper(async (req, res, next) => {
-    const { phoneNumber,ssn } = req.body;
-    const userId = req.currentUser._id; 
-    console.log({user:req.currentUser});
-    
+const completeProfile = asyncWrapper(async (req, res, next) => {
+    const { phoneNumber, ssn } = req.body;
+    const userId = req.currentUser._id;
+    console.log({ user: req.currentUser });
+
     if (!phoneNumber) {
         return next(new AppError("Phone number is required", 400, httpStatus.FAIL));
     }
-     if (!ssn) {
+    if (!ssn) {
         return next(new AppError("Phone number is required", 400, httpStatus.FAIL));
     }
     const existingPhone = await User.findOne({ phoneNumber });
@@ -158,13 +162,13 @@ const googleLogin = asyncWrapper(async (req, res, next) => {
         return next(new AppError("Phone number is already in use", 409, httpStatus.FAIL));
     }
     const existingSSN = await User.findOne({ ssn });
-     if (existingSSN) {
+    if (existingSSN) {
         return next(new AppError("SSN is already in use", 409, httpStatus.FAIL));
     }
     const updatedUser = await User.findByIdAndUpdate(
         userId,
-        { phoneNumber: phoneNumber ,ssn:ssn},
-        { new: true, runValidators: true } 
+        { phoneNumber: phoneNumber, ssn: ssn },
+        { new: true, runValidators: true }
     );
 
     if (!updatedUser) {
@@ -179,8 +183,8 @@ const googleLogin = asyncWrapper(async (req, res, next) => {
                 userName: updatedUser.userName,
                 name: updatedUser.name,
                 email: updatedUser.email,
-                phoneNumber: updatedUser.phoneNumber, 
-                ssn:updatedUser.ssn,
+                phoneNumber: updatedUser.phoneNumber,
+                ssn: updatedUser.ssn,
                 avatar: updatedUser.avatar,
                 role: updatedUser.role
             }
@@ -380,7 +384,7 @@ const confirmEmail = asyncWrapper(async (req, res, next) => {
     }
 
     const { otp } = req.body;
-    const user = await User.findById(req.currentUser._id);
+    const user = await User.findById(req.currentUser._id).select("+otp");
 
     if (!user) {
         return next(
@@ -431,7 +435,7 @@ const confirmEmail = asyncWrapper(async (req, res, next) => {
 const resendConfirmationOtp = asyncWrapper(async (req, res, next) => {
     const RESEND_COOLDOWN_MS = 60 * 1000;
 
-    const user = await User.findById(req.currentUser._id);
+    const user = await User.findById(req.currentUser._id).select("+otp");
 
     if (!user) {
         return next(new AppError("User not found", 404, httpStatus.FAIL));
@@ -581,7 +585,7 @@ const forgotPassword = asyncWrapper(async (req, res, next) => {
         );
     }
 
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ email }).select("+resetPassword");
 
     if (existingUser && existingUser.resetPassword?.createdAt) {
 
@@ -676,7 +680,7 @@ const resendResetPasswordOtp = asyncWrapper(async (req, res, next) => {
     const { email } = req.body;
     const RESEND_COOLDOWN_MS = 60 * 1000;
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email }).select("+resetPassword");
 
     if (!user) {
         return res.status(200).json({
