@@ -27,8 +27,8 @@ export const verifyToken = async (req, res, next) => {
 
         try {
             const decoded = Jwt.verify(token, secret);
-           
-            
+            console.log(decoded.role);
+
             const isSessionEnded = await blackListedTokenModel.findOne({
                 tokenId: decoded.jti
             });

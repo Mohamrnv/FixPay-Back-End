@@ -106,6 +106,7 @@ Welcome to the **FixPay Back-End**, a robust and secure RESTful API built with *
 
 ### 📋 Task Routes (`/api/tasks`)
 - `GET /open` - List all available (open) tasks with pagination.
+- `GET /:taskId/offers` - (Customer) View all offers submitted for a specific task.
 - `POST /` - Create a new service task (job request). Supports up to 5 image uploads.
 
 ### 🏷️ Offer Routes (`/api/offers`)
