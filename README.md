@@ -104,6 +104,9 @@ Welcome to the **FixPay Back-End**, a robust and secure RESTful API built with *
 - `GET /:id/workers` - Get all workers in a specific category.
 - `POST /` - (Admin) Create a new category.
 
+### 📋 Task Routes (`/api/tasks`)
+- `POST /` - Create a new service task (job request).
+
 ---
 
 ## 📁 Project Structure
