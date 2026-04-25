@@ -92,3 +92,80 @@ export const getOpenTasks = asyncWrapper(async (req, res, next) => {
         }
     });
 });
+
+export const updateTask = asyncWrapper(async (req, res, next) => {
+    const { taskId } = req.params;
+    const { title, description, categoryId, budget, location } = req.body;
+    const customerId = req.currentUser._id;
+
+    const task = await Task.findById(taskId);
+    if (!task) {
+        return next(new AppError("Task not found", 404, httpStatus.FAIL));
+    }
+
+    if (task.customerId.toString() !== customerId.toString() && req.currentUser.role !== "admin") {
+        return next(new AppError("You are not authorized to edit this task", 403, httpStatus.FAIL));
+    }
+
+    task.title = title || task.title;
+    task.description = description || task.description;
+    task.categoryId = categoryId || task.categoryId;
+    task.budget = budget || task.budget;
+    task.location = location || task.location;
+
+    // Handle new Images
+    if (req.files && req.files.length > 0) {
+        try {
+            const uploadPromises = req.files.map((file, index) => {
+                return new Promise((resolve, reject) => {
+                    const stream = cloudinary.uploader.upload_stream(
+                        {
+                            folder: `FixPay/users/${customerId}/tasks`,
+                            public_id: `${task._id}-${Date.now()}-${index}`,
+                            resource_type: "image"
+                        },
+                        (error, result) => {
+                            if (error) reject(error);
+                            else resolve(result.secure_url);
+                        }
+                    );
+                    stream.end(file.buffer);
+                });
+            });
+
+            const newImageUrls = await Promise.all(uploadPromises);
+            task.images = task.images ? [...task.images, ...newImageUrls] : newImageUrls;
+        } catch (uploadError) {
+            console.error("Cloudinary upload error:", uploadError);
+        }
+    }
+
+    await task.save();
+
+    res.status(200).json({
+        status: httpStatus.SUCCESS,
+        data: { task }
+    });
+});
+
+export const deleteTask = asyncWrapper(async (req, res, next) => {
+    const { taskId } = req.params;
+    const customerId = req.currentUser._id;
+
+    const task = await Task.findById(taskId);
+    if (!task) {
+        return next(new AppError("Task not found", 404, httpStatus.FAIL));
+    }
+
+    if (task.customerId.toString() !== customerId.toString() && req.currentUser.role !== "admin") {
+        return next(new AppError("You are not authorized to delete this task", 403, httpStatus.FAIL));
+    }
+
+    await Task.findByIdAndDelete(taskId);
+
+    res.status(200).json({
+        status: httpStatus.SUCCESS,
+        data: null,
+        message: "Task deleted successfully"
+    });
+});
