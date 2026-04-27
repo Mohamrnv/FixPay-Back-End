@@ -5,21 +5,8 @@
 node_modules/
 package-lock.json
 
-# Logs
-logs/
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
 
-# Build folders
-dist/
-build/
-out/
-
-# Test coverage
-coverage/
-.nyc_output/
+#
 
 # =========================
 # Environment Variables
@@ -41,11 +28,7 @@ __pycache__/
 *.pyo
 *.pyd
 
-# Virtual environments
-venv/
-.venv/
-env/
-id_env/
+
 
 # Python build files
 *.egg-info/
@@ -54,18 +37,6 @@ id_env/
 # Python databases
 *.sqlite3
 
-# =========================
-# AI / ML Files
-# =========================
-
-# Model weights
-models/
-*.pt
-*.pth
-*.onnx
-*.h5
-*.ckpt
-*.pb
 
 # Results / generated files
 results/
@@ -78,11 +49,7 @@ uploads/
 temp/
 tmp/
 
-# Temporary files
-*.tmp
-*.bak
-*.cache
-*.txt
+
 
 # =========================
 # IDE
