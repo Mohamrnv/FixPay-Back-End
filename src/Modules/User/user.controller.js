@@ -234,7 +234,13 @@ const register = asyncWrapper(async (req, res, next) => {
     const existingUser = await Services.findUserByService({ email, phoneNumber, userName, ssn });
 
     if (existingUser) {
-        return next(new AppError("Registration failed. Information unavailable.", 400, httpStatus.FAIL));
+        let duplicateField = "Information";
+        if (existingUser.email === email) duplicateField = "Email";
+        else if (existingUser.phoneNumber === phoneNumber) duplicateField = "Phone Number";
+        else if (existingUser.userName === userName) duplicateField = "User Name";
+        else if (existingUser.ssn === ssn) duplicateField = "SSN";
+
+        return next(new AppError(`Registration failed. ${duplicateField} is already in use.`, 400, httpStatus.FAIL));
     }
 
 
@@ -396,7 +402,7 @@ const confirmEmail = asyncWrapper(async (req, res, next) => {
     }
 
     const { otp } = req.body;
-    const user = await User.findById(req.currentUser._id).select("+otp");
+    const user = await User.findById(req.currentUser._id).select("+otp.value +otp.otpType +otp.expiresAt");
 
     if (!user) {
         return next(

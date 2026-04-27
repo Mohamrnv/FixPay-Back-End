@@ -72,7 +72,7 @@ const restoreDeletedUserService = async (id) => {
 
 }
 const forgotPasswordService = async (email) => {
-    const user = await User.findOne({ email }).select("+resetPassword");
+    const user = await User.findOne({ email }).select("+resetPassword.createdAt +resetPassword.expiresAt");
 
     if (!user) {
         return { resetOtp: null, user: null };
@@ -98,7 +98,7 @@ const forgotPasswordService = async (email) => {
 
 
 const resetPasswordService = async (email, otp, newPassword) => {
-    const user = await User.findOne({ email }).select("+password +resetPassword");
+    const user = await User.findOne({ email }).select("+password +resetPassword.value +resetPassword.otpType +resetPassword.expiresAt");
 
     if (!user || !user.resetPassword?.value) {
         throw new Error("Invalid or expired OTP");

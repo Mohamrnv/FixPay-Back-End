@@ -6,5 +6,5 @@ export const Roles = {
 }
 export const OtpTypesEnum={
     CONFIRMATION:"confirm",
-    RESETPASSWPRD:"resetPassword"
+    RESETPASSWORD:"resetPassword"
 }

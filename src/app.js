@@ -1,4 +1,5 @@
 import express from 'express';
+import cors from 'cors';
 import userRouter from './Routes/User.Router.js';
 import categoryRouter from './Routes/Category.Router.js';
 import taskRouter from './Routes/Task.Router.js';
@@ -10,6 +11,7 @@ import * as httpMessages from "./Utils/Http/HttpDataText.js"
 
 const app = express();
 
+app.use(cors());
 app.use(express.json());
 
 app.use('/api/user', userRouter);
