@@ -29,6 +29,7 @@ export const verifyToken = async (req, res, next) => {
 
         try {
             const decoded = Jwt.verify(token, secret);
+            // console.log("Decoded Token:", decoded);
             
             const isSessionEnded = await blackListedTokenModel.findOne({
                 tokenId: decoded.jti
@@ -44,6 +45,7 @@ export const verifyToken = async (req, res, next) => {
             // Fetch user to check for current status (Deletion/Suspension)
             const user = await User.findById(decoded.userId || decoded._id);
             if (!user) {
+                console.error("DEBUG: User not found in DB for ID:", decoded.userId || decoded._id);
                 return next(new AppError("User no longer exists", 401, httpStatus.FAIL));
             }
 

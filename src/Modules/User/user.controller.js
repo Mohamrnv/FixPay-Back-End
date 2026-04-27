@@ -24,6 +24,7 @@ import FormData from "form-data";
 const generateOtp = customAlphabet('0123456789', 6);
 const PYTHON_API_URL = process.env.PYTHON_API_URL ?? "http://localhost:5000";
 const verifyIdentity = asyncWrapper(async (req, res, next) => {
+    if (!req.files) return next(new AppError("Images required", 400));
     const { id_image, live_image } = req.files;
     if (!id_image || !live_image) return next(new AppError("Images required", 400));
 
@@ -43,7 +44,8 @@ const verifyIdentity = asyncWrapper(async (req, res, next) => {
         
         const isSsnMatch = String(user.ssn).trim() === String(data.extracted_data.national_id).trim();
 
-        const userBirthDate = new Date(user.dateOfBirth).toISOString().split('T')[0];
+        const dob = new Date(user.dateOfBirth);
+        const userBirthDate = `${dob.getFullYear()}-${String(dob.getMonth() + 1).padStart(2, '0')}-${String(dob.getDate()).padStart(2, '0')}`;
         const isBirthMatch = userBirthDate === data.extracted_data.birth_date;
 
         const isOverallValid = data.match && isSsnMatch && isBirthMatch;
