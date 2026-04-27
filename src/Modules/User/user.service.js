@@ -132,6 +132,15 @@ const resetPasswordService = async (email, otp, newPassword) => {
     return user;
 };
 
+const suspendUserService = async (id, suspendUntil, suspensionReason) => {
+    return await User.findByIdAndUpdate(id, {
+        $set: {
+            suspendedUntil: new Date(suspendUntil),
+            suspensionReason: suspensionReason
+        }
+    }, { new: true });
+};
+
 export {
     getAllUsersService,
     getUserByIdService,
@@ -142,5 +151,6 @@ export {
     forgotPasswordService,
     resetPasswordService,
     restoreDeletedUserService,
-    findUserByService
-};
+    findUserByService,
+    suspendUserService
+};

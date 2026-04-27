@@ -23,6 +23,7 @@ import {
   profileImage,
   restoreDeletedAccount,
   assignAdmin,
+  suspendUser,
   googleLogin,
   completeProfile,
   verifyIdentity
@@ -35,6 +36,7 @@ router.get("/:id", verifyToken, allowedTo(Roles.admin), getUserById);
 router.patch("/:id", verifyToken, allowedTo(Roles.admin), editUser);
 router.delete("/:id", verifyToken, allowedTo(Roles.admin), deleteUser);
 router.patch("/assign-admin/:id", verifyToken, allowedTo(Roles.admin), assignAdmin);
+router.patch("/suspend/:id", verifyToken, allowedTo(Roles.admin), suspendUser);
 
 router.post("/register", normalizeAuthFields, checkSchema(registerSchema), register);
 router.post("/login", normalizeAuthFields, checkSchema(loginSchema), login);

@@ -339,6 +339,16 @@ const login = asyncWrapper(async (req, res, next) => {
             { expiresIn: '30m' }
         );
 
+        if (user.suspendedUntil && user.suspendedUntil > Date.now()) {
+            return next(
+                new AppError(
+                    `Your account is suspended until ${user.suspendedUntil.toLocaleString()}. Reason: ${user.suspensionReason || 'No reason provided'}`,
+                    403,
+                    httpStatus.FAIL
+                )
+            );
+        }
+
         if (user.deleted) {
             if (Date.now() <= user.restoreUntil.getTime()) {
 
@@ -789,6 +799,27 @@ const assignAdmin = asyncWrapper(async (req, res, next) => {
     });
 });
 
+const suspendUser = asyncWrapper(async (req, res, next) => {
+    const { id } = req.params;
+    const { suspendUntil, suspensionReason } = req.body;
+
+    if (!id || !suspendUntil) {
+        return next(new AppError("User ID and suspension end date are required", 400, httpStatus.FAIL));
+    }
+
+    const updatedUser = await Services.suspendUserService(id, suspendUntil, suspensionReason);
+
+    if (!updatedUser) {
+        return next(new AppError(httpMessage.NOT_FOUND, 404, httpStatus.FAIL));
+    }
+
+    res.status(200).json({
+        status: httpStatus.SUCCESS,
+        data: { user: updatedUser },
+        message: `User suspended until ${new Date(suspendUntil).toLocaleString()}`
+    });
+});
+
 export {
     getAllUsers,
     getUserById,
@@ -807,5 +838,6 @@ export {
     assignAdmin,
     googleLogin,
     completeProfile,
-    verifyIdentity
+    verifyIdentity,
+    suspendUser
 };

@@ -126,6 +126,12 @@ const usersSchema = new mongoose.Schema({
     categoryId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Category'
+    },
+    suspendedUntil: {
+        type: Date
+    },
+    suspensionReason: {
+        type: String
     }
 
 }, {

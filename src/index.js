@@ -3,6 +3,7 @@ import userRouter from './Routes/User.Router.js';
 import categoryRouter from './Routes/Category.Router.js';
 import taskRouter from './Routes/Task.Router.js';
 import offerRouter from './Routes/Offer.Router.js';
+import messageRouter from './Routes/Message.Router.js';
 import "dotenv/config";
 import dbConnection from './DB/db.connection.js';
 import * as httpStatus from "./Utils/Http/httpStatusText.js"
@@ -14,10 +15,11 @@ dbConnection();
 
 app.use(express.json());
 
-app.use('/api/user',userRouter);
+app.use('/api/user', userRouter);
 app.use('/api/categories', categoryRouter);
 app.use('/api/tasks', taskRouter);
 app.use('/api/offers', offerRouter);
+app.use('/api/messages', messageRouter);
 
 app.use((req, res) => {
     res.status(404).json({
@@ -38,5 +40,5 @@ app.use((err, req, res, next) => {
 
 
 app.listen(port, () => {
-  console.log(`Server is running on http://localhost:${port}`);
+    console.log(`Server is running on http://localhost:${port}`);
 });

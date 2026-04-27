@@ -2,6 +2,8 @@ import Jwt from "jsonwebtoken";
 import { AppError } from "../Utils/Errors/AppError.js";  // Update this path
 import * as httpStatus from "../Utils/Http/httpStatusText.js";  // Update this path
 import blackListedTokenModel from '../Models/blackListedToken.model.js'
+import User from '../Models/User.model.js';
+
 export const verifyToken = async (req, res, next) => {
     try {
         const authHeader = req.headers["authorization"];
@@ -27,8 +29,7 @@ export const verifyToken = async (req, res, next) => {
 
         try {
             const decoded = Jwt.verify(token, secret);
-            console.log(decoded.role);
-
+            
             const isSessionEnded = await blackListedTokenModel.findOne({
                 tokenId: decoded.jti
             });
@@ -39,10 +40,30 @@ export const verifyToken = async (req, res, next) => {
                     message: "your session is ended"
                 });
             }
-            req.currentUser = {
-                ...decoded,
-                _id: decoded.userId || decoded._id
-            };
+
+            // Fetch user to check for current status (Deletion/Suspension)
+            const user = await User.findById(decoded.userId || decoded._id);
+            if (!user) {
+                return next(new AppError("User no longer exists", 401, httpStatus.FAIL));
+            }
+
+            if (user.deleted) {
+                return next(new AppError("This account has been deleted", 403, httpStatus.FAIL));
+            }
+
+            if (user.suspendedUntil && user.suspendedUntil > Date.now()) {
+                return next(
+                    new AppError(
+                        `Account suspended until ${user.suspendedUntil.toLocaleString()}. Reason: ${user.suspensionReason || 'No reason provided'}`,
+                        403,
+                        httpStatus.FAIL
+                    )
+                );
+            }
+
+            req.currentUser = user.toObject();
+            req.currentUser.jti = decoded.jti; // Preserve JTI for blacklisting logic
+            req.currentUser.role = decoded.role; // Ensure role is accessible directly
 
             next();
         } catch (err) {

@@ -39,6 +39,7 @@ export const acceptOffer = asyncWrapper(async (req, res, next) => {
 
     task.status = TaskStatus.ASSIGNED;
     task.workerId = offer.workerId;
+    task.budget = offer.price; // Update task budget to the final agreed price
     await task.save();
 
     // Reject all other offers for this task
@@ -49,7 +50,7 @@ export const acceptOffer = asyncWrapper(async (req, res, next) => {
 
     res.status(200).json({
         status: httpStatus.SUCCESS,
-        message: "Offer accepted and worker assigned successfully",
+        message: "Offer accepted and worker assigned successfully at requested price",
         data: { task, acceptedOffer: offer }
     });
 });
@@ -83,7 +84,8 @@ export const createOffer = asyncWrapper(async (req, res, next) => {
         taskId,
         workerId,
         price,
-        message
+        message,
+        negotiationHistory: [{ price, message, bidBy: workerId }]
     });
 
     await newOffer.save();
@@ -91,6 +93,71 @@ export const createOffer = asyncWrapper(async (req, res, next) => {
     res.status(201).json({
         status: httpStatus.SUCCESS,
         data: { offer: newOffer }
+    });
+});
+
+export const counterOffer = asyncWrapper(async (req, res, next) => {
+    const { offerId } = req.params;
+    const { price, message } = req.body;
+    const customerId = req.currentUser._id;
+
+    if (!price) return next(new AppError("Price is required for a counter-offer", 400, httpStatus.FAIL));
+
+    const offer = await Offer.findById(offerId);
+    if (!offer) return next(new AppError("Offer not found", 404, httpStatus.FAIL));
+
+    const task = await Task.findById(offer.taskId);
+    if (task.customerId.toString() !== customerId.toString()) {
+        return next(new AppError("Only the task owner can counter an offer", 403, httpStatus.FAIL));
+    }
+
+    if (offer.status === OfferStatus.ACCEPTED || offer.status === OfferStatus.REJECTED) {
+        return next(new AppError("Cannot counter an offer that has already been closed", 400, httpStatus.FAIL));
+    }
+
+    offer.price = price;
+    offer.message = message || offer.message;
+    offer.status = OfferStatus.COUNTERED;
+    offer.negotiationHistory.push({ price, message, bidBy: customerId });
+
+    await offer.save();
+
+    res.status(200).json({
+        status: httpStatus.SUCCESS,
+        message: "Counter-offer sent to worker",
+        data: { offer }
+    });
+});
+
+export const respondToCounter = asyncWrapper(async (req, res, next) => {
+    const { offerId } = req.params;
+    const { price, message } = req.body;
+    const workerId = req.currentUser._id;
+
+    if (!price) return next(new AppError("Price is required to respond to a counter", 400, httpStatus.FAIL));
+
+    const offer = await Offer.findById(offerId);
+    if (!offer) return next(new AppError("Offer not found", 404, httpStatus.FAIL));
+
+    if (offer.workerId.toString() !== workerId.toString()) {
+        return next(new AppError("Only the worker who made the offer can respond", 403, httpStatus.FAIL));
+    }
+
+    if (offer.status !== OfferStatus.COUNTERED) {
+        return next(new AppError("You can only respond to a countered offer", 400, httpStatus.FAIL));
+    }
+
+    offer.price = price;
+    offer.message = message || offer.message;
+    offer.status = OfferStatus.PENDING; 
+    offer.negotiationHistory.push({ price, message, bidBy: workerId });
+
+    await offer.save();
+
+    res.status(200).json({
+        status: httpStatus.SUCCESS,
+        message: "Response sent to customer",
+        data: { offer }
     });
 });
 
