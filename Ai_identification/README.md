@@ -1,5 +1,7 @@
 # Egyptian National ID Verification System  v2
 
+> **Note:** This service is a component of the **FixPay Backend** infrastructure.
+
 Production-optimised Flask API — compares the face on an Egyptian national ID card against a live selfie using RetinaFace + ArcFace.
 
 ---

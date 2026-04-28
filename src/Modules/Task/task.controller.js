@@ -15,7 +15,7 @@ export const createTask = asyncWrapper(async (req, res, next) => {
         return next(new AppError("Validation Error", 400, httpStatus.FAIL, errors.array()));
     }
 
-    const { title, description, categoryId, budget, location } = req.body;
+    const { title, description, categoryId, budget, location, locationCoords } = req.body;
     const customerId = req.currentUser._id;
 
     const newTask = new Task({
@@ -24,7 +24,8 @@ export const createTask = asyncWrapper(async (req, res, next) => {
         description,
         categoryId,
         budget,
-        location
+        location,
+        locationCoords
     });
 
     await newTask.save();
@@ -95,7 +96,7 @@ export const getOpenTasks = asyncWrapper(async (req, res, next) => {
 
 export const updateTask = asyncWrapper(async (req, res, next) => {
     const { taskId } = req.params;
-    const { title, description, categoryId, budget, location } = req.body;
+    const { title, description, categoryId, budget, location, locationCoords } = req.body;
     const customerId = req.currentUser._id;
 
     const task = await Task.findById(taskId);
@@ -112,6 +113,7 @@ export const updateTask = asyncWrapper(async (req, res, next) => {
     task.categoryId = categoryId || task.categoryId;
     task.budget = budget || task.budget;
     task.location = location || task.location;
+    if (locationCoords) task.locationCoords = locationCoords;
 
     // Handle new Images
     if (req.files && req.files.length > 0) {

@@ -269,7 +269,7 @@ const register = asyncWrapper(async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return next(new AppError("Validation failed", 400, httpStatus.FAIL, errors.array()));
 
-    const { name, userName, dateOfBirth, gender, phoneNumber, email, password, role, avatar, ssn, address, categoryId } = req.body;
+    const { name, userName, dateOfBirth, gender, phoneNumber, email, password, role, avatar, ssn, address, categoryId, locationCoords } = req.body;
 
     const existingUser = await Services.findUserByService({ email, phoneNumber, userName, ssn });
 
@@ -317,6 +317,10 @@ const register = asyncWrapper(async (req, res, next) => {
             government: address.government?.trim(),
             city: address.city?.trim(),
             street: address.street?.trim()
+        } : undefined,
+        locationCoords: locationCoords ? {
+            lat: locationCoords.lat,
+            lng: locationCoords.lng
         } : undefined,
         otp: {
             value: hashOtp,
