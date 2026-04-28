@@ -1,5 +1,7 @@
 # **Egyptian ID Card Recognition System – AI-Powered OCR & Fraud Detection**
 
+> **Note:** This service is a component of the **FixPay Backend** infrastructure.
+
 **A Python-based AI application for detecting, processing, and verifying Egyptian ID cards using YOLO and EasyOCR.**
 
 ## **Key Features**
