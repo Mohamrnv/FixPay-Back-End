@@ -15,27 +15,27 @@
  *   GET  /api/verify-health     – checks Python API is alive
  */
 
-import express  from "express";
-import multer   from "multer";
-import axios    from "axios";
+import express from "express";
+import multer from "multer";
+import axios from "axios";
 import FormData from "form-data";
-import path     from "path";
-import fs       from "fs";
+import path from "path";
+import fs from "fs";
 
-const app    = express();
+const app = express();
 const router = express.Router();
 
 // ── Config ────────────────────────────────────────────────────────────────────
 const PYTHON_API_URL = process.env.PYTHON_API_URL ?? "http://localhost:5000";
-const PORT           = process.env.PORT            ?? 3000;
-const MAX_FILE_SIZE  = 10 * 1024 * 1024; // 10 MB
+const PORT = process.env.PORT ?? 3000;
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
 // ── Multer (in-memory, no disk write) ─────────────────────────────────────────
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/bmp"]);
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits:  { fileSize: MAX_FILE_SIZE },
+  limits: { fileSize: MAX_FILE_SIZE },
   fileFilter: (_req, file, cb) => {
     ALLOWED_TYPES.has(file.mimetype)
       ? cb(null, true)
@@ -57,40 +57,23 @@ router.get("/verify-health", async (_req, res) => {
 router.post(
   "/verify-identity",
   upload.fields([
-    { name: "id_image",   maxCount: 1 },
+    { name: "id_image", maxCount: 1 },
     { name: "live_image", maxCount: 1 },
   ]),
   async (req, res) => {
     try {
       // ── 1. Validate both files are present ──────────────────────────────
-      const idFile   = req.files?.["id_image"]?.[0];
+      const idFile = req.files?.["id_image"]?.[0];
       const liveFile = req.files?.["live_image"]?.[0];
 
-      if (!idFile)   return res.status(400).json({ error: "Missing field: id_image" });
+      if (!idFile) return res.status(400).json({ error: "Missing field: id_image" });
       if (!liveFile) return res.status(400).json({ error: "Missing field: live_image" });
 
       // ── 2. Build multipart form for Python API ──────────────────────────
       const form = new FormData();
       
-      // For testing purposes: check if hardcoded test images exist and use them
-      let idBuffer = idFile.buffer;
-      let liveBuffer = liveFile.buffer;
-      let idName = idFile.originalname;
-      let liveName = liveFile.originalname;
-
-      const testIdPath = path.join(process.cwd(), "Ai_identification", "ssn.jpeg");
-      const testLivePath = path.join(process.cwd(), "Ai_identification", "face.jpeg");
-
-      if (fs.existsSync(testIdPath) && fs.existsSync(testLivePath)) {
-        idBuffer = fs.readFileSync(testIdPath);
-        liveBuffer = fs.readFileSync(testLivePath);
-        idName = "ssn.jpeg";
-        liveName = "face.jpeg";
-        console.log("[Testing] Using hardcoded images from Ai_identification in id-verification-service.");
-      }
-
-      form.append("id_image",   idBuffer,   { filename: idName,   contentType: "image/jpeg" });
-      form.append("live_image", liveBuffer, { filename: liveName, contentType: "image/jpeg" });
+      form.append("id_image", idFile.buffer, { filename: idFile.originalname, contentType: "image/jpeg" });
+      form.append("live_image", liveFile.buffer, { filename: liveFile.originalname, contentType: "image/jpeg" });
 
       // ── 3. Forward to Python Flask API ──────────────────────────────────
       const { data: result } = await axios.post(
@@ -101,14 +84,14 @@ router.post(
 
       // ── 4. Return result to client ───────────────────────────────────────
       return res.status(200).json({
-        success:      true,
-        match:        result.match,
-        similarity:   result.similarity,
-        confidence:   result.confidence,
-        liveness:     result.liveness,
-        threshold:    result.threshold,
-        latency_ms:   result.latency_ms,
-        timings:      result.timings,
+        success: true,
+        match: result.match,
+        similarity: result.similarity,
+        confidence: result.confidence,
+        liveness: result.liveness,
+        threshold: result.threshold,
+        latency_ms: result.latency_ms,
+        timings: result.timings,
         result_image: result.result_image ?? null,
       });
 
@@ -116,7 +99,7 @@ router.post(
       if (err.response) {
         return res.status(err.response.status).json({
           success: false,
-          error:   err.response.data?.error ?? "Python API error",
+          error: err.response.data?.error ?? "Python API error",
         });
       }
 

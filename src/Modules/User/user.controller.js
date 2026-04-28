@@ -25,57 +25,54 @@ import path from "path";
 const generateOtp = customAlphabet('0123456789', 6);
 const PYTHON_API_URL = process.env.PYTHON_API_URL ?? "http://localhost:5000";
 const verifyIdentity = asyncWrapper(async (req, res, next) => {
-    // For testing purposes: always use the face and ssn photo from the repo for workers
-    let id_image_buffer, live_image_buffer;
+    // PRODUCTION MODE: use uploaded images
+    if (!req.files) return next(new AppError("Images required", 400));
+    const { id_image, live_image } = req.files;
+    if (!id_image || !live_image) return next(new AppError("Both id_image and live_image are required", 400));
 
-    if (req.currentUser.role === Roles.worker) {
-        try {
-            id_image_buffer = fs.readFileSync(path.join(process.cwd(), "Ai_identification", "ssn.jpeg"));
-            live_image_buffer = fs.readFileSync(path.join(process.cwd(), "Ai_identification", "face.jpeg"));
-            console.log("[Testing] Using hardcoded SSN and Face images for worker identity verification.");
-        } catch (readErr) {
-            console.error("Error reading test images:", readErr.message);
-            return next(new AppError("Test images not found in Ai_identification folder", 500));
-        }
-    } else {
-        if (!req.files) return next(new AppError("Images required", 400));
-        const { id_image, live_image } = req.files;
-        if (!id_image || !live_image) return next(new AppError("Images required", 400));
-        id_image_buffer = id_image[0].buffer;
-        live_image_buffer = live_image[0].buffer;
-    }
+    const id_image_buffer = id_image[0].buffer;
+    const live_image_buffer = live_image[0].buffer;
 
-    // Fetch user from DB to get sensitive data (SSN, DOB) which aren't in the token
+    // Fetch user from DB
     const user = await User.findById(req.currentUser._id).select("+ssn +dateOfBirth");
     if (!user) return next(new AppError("User not found", 404));
 
     try {
         const form = new FormData();
-        form.append("id_image", id_image_buffer, { filename: "id.jpg" });
-        form.append("live_image", live_image_buffer, { filename: "live.jpg" });
+        form.append("id_image", id_image_buffer, { filename: "id.jpg", contentType: "image/jpeg" });
+        form.append("live_image", live_image_buffer, { filename: "live.jpg", contentType: "image/jpeg" });
+
+        console.log(`[Verify] Sending images to Python API at ${PYTHON_API_URL}/verify ...`);
 
         const { data } = await axios.post(`${PYTHON_API_URL}/verify`, form, {
             headers: form.getHeaders(),
-            timeout: 40000
+            timeout: 60000
         });
-        
-        const isSsnMatch = String(user.ssn).trim() === String(data.extracted_data.national_id).trim();
 
-        const dob = new Date(user.dateOfBirth);
-        const userBirthDate = `${dob.getFullYear()}-${String(dob.getMonth() + 1).padStart(2, '0')}-${String(dob.getDate()).padStart(2, '0')}`;
-        const isBirthMatch = userBirthDate === data.extracted_data.birth_date;
+        console.log("[Verify] Python API response:", JSON.stringify(data, null, 2));
 
-        const isOverallValid = data.match && isSsnMatch && isBirthMatch;
+        // The AI service returns: match, similarity, liveness, confidence, threshold, timings
+        const isFaceMatch = data.match === true;
+        const isLive = data.liveness === true;
+        const similarity = data.similarity || 0;
+        const confidence = data.confidence || "unknown";
+
+        const isOverallValid = isFaceMatch && isLive;
 
         const updateData = isOverallValid ? {
             "identityVerification.status": "verified",
             "identityVerification.verifiedAt": new Date(),
-            "identityVerification.similarity": data.similarity,
-            "identityVerification.liveness": data.liveness,
+            "identityVerification.similarity": similarity,
+            "identityVerification.liveness": isLive,
+            "identityVerification.confidence": confidence,
             "identityVerification.failReason": null
         } : {
             "identityVerification.status": "failed",
-            "identityVerification.failReason": !isSsnMatch ? "ID Number Mismatch" : "Face Mismatch"
+            "identityVerification.similarity": similarity,
+            "identityVerification.liveness": isLive,
+            "identityVerification.failReason": !isFaceMatch
+                ? `Face mismatch (similarity: ${similarity})`
+                : "Liveness check failed"
         };
 
         await User.findByIdAndUpdate(req.currentUser._id, updateData);
@@ -83,11 +80,37 @@ const verifyIdentity = asyncWrapper(async (req, res, next) => {
         return res.status(200).json({
             status: "success",
             match: isOverallValid,
-            details: { ssnMatch: isSsnMatch, faceMatch: data.match }
+            details: {
+                faceMatch: isFaceMatch,
+                liveness: isLive,
+                similarity: similarity,
+                confidence: confidence,
+                threshold: data.threshold,
+                timings: data.timings
+            }
         });
 
     } catch (err) {
-        return next(new AppError("Verification Service Error", 503));
+        console.error("[Identity Verification Error]:", err.message);
+
+        if (err.response) {
+            console.error("Python API Response Status:", err.response.status);
+            console.error("Python API Response Data:", err.response.data);
+            return res.status(err.response.status).json({
+                status: "error",
+                message: err.response.data?.error || "AI verification service returned an error",
+                details: err.response.data
+            });
+        }
+
+        if (err.code === 'ECONNREFUSED') {
+            return next(new AppError("AI verification service is not running. Please start the Python service on port 5000.", 503));
+        }
+        if (err.code === 'ECONNABORTED') {
+            return next(new AppError("AI verification service timed out.", 504));
+        }
+
+        return next(new AppError("Verification Service Error: " + err.message, 503));
     }
 });
 

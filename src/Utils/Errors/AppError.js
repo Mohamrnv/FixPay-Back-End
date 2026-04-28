@@ -7,6 +7,7 @@ class AppError extends Error {
         this.details = details;
 
         Error.captureStackTrace(this, this.constructor);
+        console.log(this);
     }
 }
 
