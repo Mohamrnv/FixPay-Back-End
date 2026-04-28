@@ -13,11 +13,11 @@ This document lists all available API endpoints in the FixPay backend.
 | :--- | :--- | :--- | :--- |
 | `GET` | `/` | List all users | Admin |
 | `GET` | `/:id` | Get user details by ID | Admin / Owner |
-| `PATCH` | `/:id` | Update user profile | Admin |
-| `DELETE` | `/:id` | Hard delete a user | Admin |
+| `PATCH` | `/:id` | Update user profile | Admin / Owner |
+| `DELETE` | `/:id` | Hard delete a user | Admin / Owner |
 | `PATCH` | `/assign-admin/:id` | Promote a user to Admin | Admin |
 | `PATCH` | `/suspend/:id` | Suspend a user for a specific time | Admin |
-| `POST` | `/register` | Register a new user (Accepts `locationCoords`) | Public |
+| `POST` | `/register` | Register a new user | Public |
 | `POST` | `/login` | Authenticate user | Public |
 | `POST` | `/logout` | Invalidate current session | Authenticated |
 | `POST` | `/confirmEmail` | Verify email with OTP | Authenticated |
@@ -49,7 +49,7 @@ This document lists all available API endpoints in the FixPay backend.
 | :--- | :--- | :--- | :--- |
 | `GET` | `/open` | List all tasks with "open" status (paginated) | Authenticated |
 | `GET` | `/:taskId/offers` | View all offers submitted for a task | Customer (Owner) / Admin |
-| `POST` | `/` | Post a new task (Accepts `locationCoords`) | Customer |
+| `POST` | `/` | Post a new task | Customer |
 | `PATCH` | `/:taskId` | Update task details | Customer (Owner) / Admin |
 | `DELETE` | `/:taskId` | Delete a task | Customer (Owner) / Admin |
 
@@ -59,7 +59,7 @@ This document lists all available API endpoints in the FixPay backend.
 
 | Method | Endpoint | Description | Access |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/` | Submit an initial offer for a task (Calculates `estimatedTime`) | Worker |
+| `POST` | `/` | Submit an initial offer for a task | Worker |
 | `PATCH` | `/:offerId/accept` | Accept an offer (assigns worker & closes task) | Customer (Owner) |
 | `PATCH` | `/:offerId/counter` | Propose a new price (Counter-bid) | Customer (Owner) |
 | `PATCH` | `/:offerId/respond` | Respond to a customer's counter-bid | Worker (Offer Owner) |
@@ -70,26 +70,13 @@ This document lists all available API endpoints in the FixPay backend.
 
 | Method | Endpoint | Description | Access |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/` | Send a message to another user | Authenticated |
-| `GET` | `/:otherUserId` | Get chat history between current user and another user | Authenticated |
+| `POST` | `/` | Send a message for a specific task | Involved Users* |
+| `GET` | `/:taskId/:otherUserId` | Get chat history between two users | Involved Users* |
+
+*\*Involved Users: The task owner and any worker who has an active offer for that task.*
 
 ---
 
-## 6. Real-Time Sockets (Socket.io)
-
-The backend supports real-time communication via Socket.io.
-
-| Event Name | Direction | Description |
-| :--- | :--- | :--- |
-| `connection` | Client -> Server | Connect to the WebSocket. Requires `token` in auth payload or headers. |
-| `newMessage` | Server -> Client | Fired when a new message is received in an active chat. |
-| `trackingStarted` | Server -> Client | Fired when an offer is accepted to signal start of live tracking. |
-| `updateLocation` | Client -> Server | Worker emits `{ lat, lng, taskId, customerId }` to update location. |
-| `locationUpdated` | Server -> Client | Server broadcasts worker's live location to the customer's map. |
-| `disconnect` | Client -> Server | Disconnect from the WebSocket. |
-
----
-
-## 7. Authentication Header
+## 6. Authentication Header
 All routes marked as **Admin**, **Owner**, **Authenticated**, **Customer**, or **Worker** require the following header:
 `Authorization: bearer <your_jwt_token>`

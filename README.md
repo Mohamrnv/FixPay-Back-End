@@ -15,7 +15,7 @@ Welcome to the **FixPay Back-End**, a robust and secure RESTful API built with *
 
 ### 👤 User Management
 - **Profile Customization**: Update user details and upload profile images via Cloudinary.
-- **AI-Powered Identity Verification**: Advanced identity verification using a dedicated Python service for ID OCR, fraud detection, and live face matching.
+- **AI-Powered Identity Verification**: Advanced identity verification using a dedicated Python service (YOLOv8) for ID detection and live face matching.
 - **Admin Dashboard**: Comprehensive tools for managing users, assigning admins, and account deletion.
 
 ### 📂 Category & Worker Services
@@ -106,26 +106,12 @@ Welcome to the **FixPay Back-End**, a robust and secure RESTful API built with *
 
 ### 📋 Task Routes (`/api/tasks`)
 - `GET /open` - List all available (open) tasks with pagination.
-- `GET /:taskId/offers` - (Customer/Admin) View all offers submitted for a specific task.
-- `POST /` - (Customer) Create a new service task (job request). Supports up to 5 image uploads and `locationCoords`.
-- `PATCH /:taskId` - (Customer/Admin) Update task details and images.
-- `DELETE /:taskId` - (Customer/Admin) Delete a specific task.
+- `GET /:taskId/offers` - (Customer) View all offers submitted for a specific task.
+- `POST /` - Create a new service task (job request). Supports up to 5 image uploads.
 
 ### 🏷️ Offer Routes (`/api/offers`)
-- `POST /` - (Worker) Submit a bid/offer for an open task. Returns OSRM `estimatedTime` & `estimatedDistance`.
+- `POST /` - (Worker) Submit a bid/offer for an open task.
 - `PATCH /:offerId/accept` - (Customer) Accept a specific offer and assign the worker to the task.
-- `PATCH /:offerId/counter` - (Customer) Propose a new price (Counter-bid).
-- `PATCH /:offerId/respond` - (Worker) Respond to a customer's counter-bid.
-
-### 💬 Message Routes (`/api/messages`)
-- `POST /` - Send a message to another user.
-- `GET /:otherUserId` - Get chat history between current user and another user.
-
-### 🔌 Real-Time Sockets (Socket.io)
-- Supports real-time bidirectional communication.
-- Requires JWT token on connection (`auth.token` or `authorization` header).
-- **Chat:** Emit and listen to events like `newMessage` for live messaging.
-- **Live Tracking:** Uses `trackingStarted`, `updateLocation`, and `locationUpdated` events for map tracking.
 
 ---
 

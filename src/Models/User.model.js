@@ -62,11 +62,8 @@ const usersSchema = new mongoose.Schema({
         government: { type: String, set: (v) => encrypt(v), get: (v) => decrypt(v) },
         city: { type: String, set: (v) => encrypt(v), get: (v) => decrypt(v) },
         street: { type: String, set: (v) => encrypt(v), get: (v) => decrypt(v) },
-    },
-    locationCoords: {
-        lat: { type: Number },
-        lng: { type: Number }
-    },
+    }
+    ,
     otp: {
         value: { type: String, select: false },
         createdAt: { type: Date, select: false },
