@@ -19,6 +19,8 @@ import express  from "express";
 import multer   from "multer";
 import axios    from "axios";
 import FormData from "form-data";
+import path     from "path";
+import fs       from "fs";
 
 const app    = express();
 const router = express.Router();
@@ -69,8 +71,26 @@ router.post(
 
       // ── 2. Build multipart form for Python API ──────────────────────────
       const form = new FormData();
-      form.append("id_image",   idFile.buffer,   { filename: idFile.originalname,   contentType: idFile.mimetype });
-      form.append("live_image", liveFile.buffer, { filename: liveFile.originalname, contentType: liveFile.mimetype });
+      
+      // For testing purposes: check if hardcoded test images exist and use them
+      let idBuffer = idFile.buffer;
+      let liveBuffer = liveFile.buffer;
+      let idName = idFile.originalname;
+      let liveName = liveFile.originalname;
+
+      const testIdPath = path.join(process.cwd(), "Ai_identification", "ssn.jpeg");
+      const testLivePath = path.join(process.cwd(), "Ai_identification", "face.jpeg");
+
+      if (fs.existsSync(testIdPath) && fs.existsSync(testLivePath)) {
+        idBuffer = fs.readFileSync(testIdPath);
+        liveBuffer = fs.readFileSync(testLivePath);
+        idName = "ssn.jpeg";
+        liveName = "face.jpeg";
+        console.log("[Testing] Using hardcoded images from Ai_identification in id-verification-service.");
+      }
+
+      form.append("id_image",   idBuffer,   { filename: idName,   contentType: "image/jpeg" });
+      form.append("live_image", liveBuffer, { filename: liveName, contentType: "image/jpeg" });
 
       // ── 3. Forward to Python Flask API ──────────────────────────────────
       const { data: result } = await axios.post(

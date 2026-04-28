@@ -21,12 +21,29 @@ import { OAuth2Client } from 'google-auth-library';
 import jwt from 'jsonwebtoken';
 import axios from "axios";
 import FormData from "form-data";
+import path from "path";
 const generateOtp = customAlphabet('0123456789', 6);
 const PYTHON_API_URL = process.env.PYTHON_API_URL ?? "http://localhost:5000";
 const verifyIdentity = asyncWrapper(async (req, res, next) => {
-    if (!req.files) return next(new AppError("Images required", 400));
-    const { id_image, live_image } = req.files;
-    if (!id_image || !live_image) return next(new AppError("Images required", 400));
+    // For testing purposes: always use the face and ssn photo from the repo for workers
+    let id_image_buffer, live_image_buffer;
+
+    if (req.currentUser.role === Roles.worker) {
+        try {
+            id_image_buffer = fs.readFileSync(path.join(process.cwd(), "Ai_identification", "ssn.jpeg"));
+            live_image_buffer = fs.readFileSync(path.join(process.cwd(), "Ai_identification", "face.jpeg"));
+            console.log("[Testing] Using hardcoded SSN and Face images for worker identity verification.");
+        } catch (readErr) {
+            console.error("Error reading test images:", readErr.message);
+            return next(new AppError("Test images not found in Ai_identification folder", 500));
+        }
+    } else {
+        if (!req.files) return next(new AppError("Images required", 400));
+        const { id_image, live_image } = req.files;
+        if (!id_image || !live_image) return next(new AppError("Images required", 400));
+        id_image_buffer = id_image[0].buffer;
+        live_image_buffer = live_image[0].buffer;
+    }
 
     // Fetch user from DB to get sensitive data (SSN, DOB) which aren't in the token
     const user = await User.findById(req.currentUser._id).select("+ssn +dateOfBirth");
@@ -34,8 +51,8 @@ const verifyIdentity = asyncWrapper(async (req, res, next) => {
 
     try {
         const form = new FormData();
-        form.append("id_image", id_image[0].buffer, { filename: "id.jpg" });
-        form.append("live_image", live_image[0].buffer, { filename: "live.jpg" });
+        form.append("id_image", id_image_buffer, { filename: "id.jpg" });
+        form.append("live_image", live_image_buffer, { filename: "live.jpg" });
 
         const { data } = await axios.post(`${PYTHON_API_URL}/verify`, form, {
             headers: form.getHeaders(),
