@@ -73,19 +73,3 @@ tmp/
 ehthumbs.db
 Thumbs.db
 desktop.ini
-
-# =========================
-# Virtual Environments
-# =========================
-venv/
-.venv/
-env/
-id_env/
-Ai_Face_identification/id_env/
-
-# =========================
-# Machine Learning Models
-# =========================
-*.pt
-*.pth
-*.onnx

@@ -48,23 +48,6 @@ export const acceptOffer = asyncWrapper(async (req, res, next) => {
         { status: OfferStatus.REJECTED }
     );
 
-    // Trigger Real-Time tracking socket event
-    try {
-        const { getIO, getSocketId } = await import("../../socket/socket.js");
-        const io = getIO();
-        const workerSocketId = getSocketId(offer.workerId);
-        const customerSocketId = getSocketId(task.customerId);
-        
-        if (workerSocketId) {
-            io.to(workerSocketId).emit("trackingStarted", { taskId: task._id, message: "Your offer was accepted, start tracking!" });
-        }
-        if (customerSocketId) {
-            io.to(customerSocketId).emit("trackingStarted", { taskId: task._id, message: "Offer accepted, waiting for worker location!" });
-        }
-    } catch(err) {
-        console.error("Socket error on trackingStart", err);
-    }
-
     res.status(200).json({
         status: httpStatus.SUCCESS,
         message: "Offer accepted and worker assigned successfully at requested price",
@@ -97,32 +80,11 @@ export const createOffer = asyncWrapper(async (req, res, next) => {
         return next(new AppError("You have already submitted an offer for this task", 400, httpStatus.FAIL));
     }
 
-    const worker = await User.findById(workerId);
-    let estimatedTime = null;
-    let estimatedDistance = null;
-
-    if (worker?.locationCoords?.lat && worker?.locationCoords?.lng && task?.locationCoords?.lat && task?.locationCoords?.lng) {
-        try {
-            const { default: axios } = await import("axios");
-            const url = `http://router.project-osrm.org/route/v1/driving/${worker.locationCoords.lng},${worker.locationCoords.lat};${task.locationCoords.lng},${task.locationCoords.lat}?overview=false`;
-            const response = await axios.get(url, { timeout: 5000 });
-            if (response.data && response.data.routes && response.data.routes.length > 0) {
-                const route = response.data.routes[0];
-                estimatedDistance = parseFloat((route.distance / 1000).toFixed(2)); // in km
-                estimatedTime = Math.ceil(route.duration / 60); // in minutes
-            }
-        } catch (error) {
-            console.error("OSRM Routing Error:", error.message);
-        }
-    }
-
     const newOffer = new Offer({
         taskId,
         workerId,
         price,
         message,
-        estimatedTime,
-        estimatedDistance,
         negotiationHistory: [{ price, message, bidBy: workerId }]
     });
 
