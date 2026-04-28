@@ -1,0 +1,13 @@
+flask
+flask-cors
+opencv-python
+numpy
+pillow
+ultralytics
+easyocr
+insightface
+onnxruntime
+scikit-learn
+albumentations
+requests
+form-data

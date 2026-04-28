@@ -34,6 +34,23 @@ export const initSocket = (server) => {
 
         usersSocketMap.set(userId.toString(), socket.id);
 
+        // Real-time location tracking from worker to task owner
+        socket.on("updateLocation", (data) => {
+            // data should include: { taskId, customerId, lat, lng }
+            const { taskId, customerId, lat, lng } = data;
+            if (customerId) {
+                const customerSocketId = usersSocketMap.get(customerId.toString());
+                if (customerSocketId) {
+                    io.to(customerSocketId).emit("locationUpdated", {
+                        taskId,
+                        workerId: userId,
+                        lat,
+                        lng
+                    });
+                }
+            }
+        });
+
         socket.on("disconnect", () => {
             console.log(`User disconnected: ${userId}`);
             usersSocketMap.delete(userId.toString());

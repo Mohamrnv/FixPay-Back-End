@@ -32,6 +32,12 @@ const offerSchema = new mongoose.Schema({
         enum: Object.values(OfferStatus),
         default: OfferStatus.PENDING
     },
+    estimatedTime: {
+        type: Number // Time in minutes
+    },
+    estimatedDistance: {
+        type: Number // Distance in kilometers
+    },
     negotiationHistory: [{
         price: { type: Number, required: true },
         message: { type: String },

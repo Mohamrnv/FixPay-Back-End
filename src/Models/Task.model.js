@@ -47,6 +47,10 @@ const taskSchema = new mongoose.Schema({
         set: (v) => encrypt(v),
         get: (v) => decrypt(v)
     },
+    locationCoords: {
+        lat: { type: Number },
+        lng: { type: Number }
+    },
     status: {
         type: String,
         enum: Object.values(TaskStatus),
