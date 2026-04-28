@@ -1,11 +1,6 @@
 import mongoose from "mongoose";
 
 const messageSchema = new mongoose.Schema({
-    taskId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Task",
-        required: [true, "Task ID is required"]
-    },
     senderId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Users",
@@ -28,9 +23,9 @@ const messageSchema = new mongoose.Schema({
     timestamps: true
 });
 
-// Index for fast retrieval of conversation history for a specific task between two users
-messageSchema.index({ taskId: 1, senderId: 1, receiverId: 1 });
-messageSchema.index({ taskId: 1, receiverId: 1, senderId: 1 });
+// Index for fast retrieval of conversation history between two users
+messageSchema.index({ senderId: 1, receiverId: 1 });
+messageSchema.index({ receiverId: 1, senderId: 1 });
 
 const Message = mongoose.model("Message", messageSchema);
 

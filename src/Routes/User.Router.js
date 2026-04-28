@@ -31,8 +31,8 @@ import {
 
 const router = Router();
 
-router.get("/", verifyToken, allowedTo(Roles.admin), getAllUsers);
-router.get("/:id", verifyToken, allowedTo(Roles.admin), getUserById);
+router.get("/", verifyToken, getAllUsers);
+router.get("/:id", verifyToken, getUserById);
 router.patch("/:id", verifyToken, allowedTo(Roles.admin), editUser);
 router.delete("/:id", verifyToken, allowedTo(Roles.admin), deleteUser);
 router.patch("/assign-admin/:id", verifyToken, allowedTo(Roles.admin), assignAdmin);

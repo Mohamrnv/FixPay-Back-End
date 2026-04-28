@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Chat Test</title>
+    <!-- Load Socket.io Client from CDN -->
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .box { border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; border-radius: 5px; }
+        input[type="text"], input[type="password"] { width: 100%; padding: 8px; margin: 5px 0 15px 0; }
+        button { padding: 10px 15px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        #logs { background: #f4f4f4; padding: 15px; height: 300px; overflow-y: scroll; border: 1px solid #ddd; font-family: monospace; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+
+    <h2>FixPay Socket.IO Chat Tester</h2>
+
+    <div class="box" id="connectionBox">
+        <h3>1. Connect to Socket</h3>
+        <label>Enter your JWT Token (User A):</label>
+        <input type="password" id="jwtToken" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
+        <button onclick="connectSocket()">Connect Now</button>
+        <p id="connStatus" style="font-weight: bold;"></p>
+    </div>
+
+    <div class="box" id="chatBox" style="opacity: 0.5; pointer-events: none;">
+        <h3>2. Chat Interface</h3>
+        <label>Chatting with User ID:</label>
+        <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+            <input type="text" id="receiverId" placeholder="60fa0d..." style="margin: 0; flex: 1;">
+            <button onclick="loadHistory()">🔄 Load History</button>
+        </div>
+        
+        <label>Message Content:</label>
+        <div style="display: flex; gap: 10px;">
+            <input type="text" id="messageBox" placeholder="Type your message here..." style="margin: 0; flex: 1;">
+            <button onclick="sendMessage()">Send via API</button>
+        </div>
+    </div>
+
+    <div class="box">
+        <h3>Live Chat & History</h3>
+        <div id="logs"></div>
+    </div>
+
+    <script>
+        let socket;
+        let myToken = '';
+        let myId = '';
+
+        // Decode token to find my own ID for UI styling
+        function decodeJwt(token) {
+            try { return JSON.parse(atob(token.split('.')[1])); } 
+            catch(e) { return null; }
+        }
+
+        function renderMessage(msgObj) {
+            const logs = document.getElementById("logs");
+            const isMe = msgObj.senderId === myId;
+            const align = isMe ? "right" : "left";
+            const bg = isMe ? "#dcf8c6" : "#ffffff";
+            const msgHtml = `<div style="text-align: ${align}; margin: 5px 0;">
+                <div style="display: inline-block; background: ${bg}; padding: 10px 15px; border-radius: 12px; border: 1px solid #eee; max-width: 70%; text-align: left;">
+                    <small style="color: #888; font-size: 0.7em;">${isMe ? "You" : "Them"}</small><br/>
+                    <b>${msgObj.content}</b>
+                </div>
+            </div>`;
+            logs.innerHTML += msgHtml;
+            logs.scrollTop = logs.scrollHeight;
+        }
+
+        function logEvent(msg, type = "normal") {
+            const logs = document.getElementById("logs");
+            const color = type === "error" ? "red" : type === "success" ? "green" : "#888";
+            logs.innerHTML += `<div style="color: ${color}; text-align: center; font-size: 0.8em; margin: 5px 0;">[SYSTEM] ${msg}</div>`;
+            logs.scrollTop = logs.scrollHeight;
+        }
+
+        // --- CONNECT SOCKET ---
+        function connectSocket() {
+            myToken = document.getElementById("jwtToken").value.trim();
+            if(!myToken) return alert("Please enter a valid JWT token first.");
+
+            const decoded = decodeJwt(myToken);
+            if (decoded) myId = decoded.userId || decoded._id;
+
+            logEvent("Attempting to connect to WS://localhost:2001...");
+            
+            socket = io("http://localhost:2001", {
+                auth: { token: myToken }
+            });
+
+            socket.on("connect", () => {
+                document.getElementById("connStatus").innerText = `✅ Connected! You are User: ${myId}`;
+                document.getElementById("connStatus").className = "success";
+                
+                document.getElementById("chatBox").style.opacity = "1";
+                document.getElementById("chatBox").style.pointerEvents = "all";
+                logEvent(`Socket Connected Successfully!`, "success");
+            });
+
+            socket.on("connect_error", (err) => {
+                document.getElementById("connStatus").innerText = "❌ Connection Failed.";
+                logEvent(`Connection Error: ${err.message}`, "error");
+            });
+
+            socket.on("newMessage", (msgObj) => {
+                renderMessage(msgObj);
+            });
+        }
+
+        // --- FETCH HISTORY VIA REST API ---
+        async function loadHistory() {
+            const receiverId = document.getElementById("receiverId").value.trim();
+            if (!receiverId) return alert("Please specify the User ID you want to load history with.");
+
+            logEvent(`Fetching history with user ${receiverId}...`);
+            document.getElementById("logs").innerHTML = ''; // clear logs
+
+            try {
+                const response = await fetch(`http://localhost:2001/api/messages/${receiverId}`, {
+                    method: "GET",
+                    headers: { "Authorization": `bearer ${myToken}` }
+                });
+                
+                const data = await response.json();
+                if (response.ok) {
+                    if (data.data.messages.length === 0) {
+                        logEvent("No chat history found with this user yet.");
+                    }
+                    data.data.messages.forEach(msg => renderMessage(msg));
+                } else {
+                    logEvent(`Failed to load history: ${data.message}`, "error");
+                }
+            } catch (err) {
+                logEvent(`Fetch failed: ${err.message}`, "error");
+            }
+        }
+
+        // --- SEND MESSAGE VIA REST API ---
+        async function sendMessage() {
+            const receiverId = document.getElementById("receiverId").value.trim();
+            const contentBox = document.getElementById("messageBox");
+            const content = contentBox.value.trim();
+
+            if (!receiverId || !content) return alert("Receiver ID and Message are required!");
+
+            try {
+                const response = await fetch("http://localhost:2001/api/messages", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `bearer ${myToken}`
+                    },
+                    body: JSON.stringify({ receiverId, content })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Manually render my own message directly into UI immediately
+                    renderMessage({ senderId: myId, content: content });
+                    contentBox.value = ''; 
+                } else {
+                    logEvent(`API Error: ${data.message}`, "error");
+                }
+            } catch (err) {
+                logEvent(`Fetch failed: ${err.message}`, "error");
+            }
+        }
+    </script>
+</body>
+</html>

@@ -8,6 +8,6 @@ const router = Router();
 router.use(verifyToken);
 
 router.post("/", sendMessage);
-router.get("/:taskId/:otherUserId", getConversation);
+router.get("/:otherUserId", getConversation);
 
 export default router;
