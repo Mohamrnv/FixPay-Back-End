@@ -76,7 +76,56 @@ This document lists all available API endpoints in the FixPay backend.
 
 ---
 
-## 6. Real-Time Sockets (Socket.io)
+## 6. Report & Ban Module (`/api/reports`)
+
+### User / Worker Endpoints
+
+| Method | Endpoint | Description | Access |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/` | Submit a report against another user | Authenticated |
+| `GET` | `/my-reports` | View your submitted reports | Authenticated |
+
+**POST `/`** — Request body:
+```json
+{
+  "reportedUser": "<userId>",
+  "reason": "fraud | inappropriate_behavior | poor_service | spam | harassment | other",
+  "description": "Detailed description (10-500 chars)"
+}
+```
+
+### Admin Endpoints
+
+| Method | Endpoint | Description | Access |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/` | List all reports (paginated, filterable) | Admin |
+| `GET` | `/:id` | Get single report details | Admin |
+| `PATCH` | `/:id/status` | Update report status + admin notes | Admin |
+| `POST` | `/ban/:id` | Permanently ban a user | Admin |
+| `POST` | `/unban/:id` | Remove ban from a user | Admin |
+
+**GET `/`** — Query parameters: `?status=pending&reason=fraud&page=1&limit=10`
+
+**PATCH `/:id/status`** — Request body:
+```json
+{
+  "status": "reviewed | resolved | dismissed",
+  "adminNotes": "Optional admin notes"
+}
+```
+
+**POST `/ban/:id`** — Request body:
+```json
+{
+  "banReason": "Reason for banning the user"
+}
+```
+
+> **Note:** Banned users receive a `403` response on every authenticated request. Admins cannot ban other admins.
+
+---
+
+## 7. Real-Time Sockets (Socket.io)
 
 The backend supports real-time communication via Socket.io.
 
@@ -91,6 +140,6 @@ The backend supports real-time communication via Socket.io.
 
 ---
 
-## 7. Authentication Header
+## 8. Authentication Header
 All routes marked as **Admin**, **Owner**, **Authenticated**, **Customer**, or **Worker** require the following header:
 `Authorization: bearer <your_jwt_token>`

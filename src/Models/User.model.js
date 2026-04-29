@@ -135,6 +135,16 @@ const usersSchema = new mongoose.Schema({
     },
     suspensionReason: {
         type: String
+    },
+    isBanned: {
+        type: Boolean,
+        default: false
+    },
+    bannedAt: {
+        type: Date
+    },
+    banReason: {
+        type: String
     }
 
 }, {
