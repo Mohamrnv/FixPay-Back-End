@@ -5,6 +5,7 @@ import categoryRouter from './Routes/Category.Router.js';
 import taskRouter from './Routes/Task.Router.js';
 import offerRouter from './Routes/Offer.Router.js';
 import messageRouter from './Routes/Message.Router.js';
+import reportRouter from './Routes/Report.Router.js';
 import "dotenv/config";
 import * as httpStatus from "./Utils/Http/httpStatusText.js"
 import * as httpMessages from "./Utils/Http/HttpDataText.js"
@@ -19,6 +20,7 @@ app.use('/api/categories', categoryRouter);
 app.use('/api/tasks', taskRouter);
 app.use('/api/offers', offerRouter);
 app.use('/api/messages', messageRouter);
+app.use('/api/reports', reportRouter);
 
 app.use((req, res) => {
     res.status(404).json({

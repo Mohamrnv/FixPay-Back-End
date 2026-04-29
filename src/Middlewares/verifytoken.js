@@ -63,6 +63,16 @@ export const verifyToken = async (req, res, next) => {
                 );
             }
 
+            if (user.isBanned) {
+                return next(
+                    new AppError(
+                        `Your account has been permanently banned. Reason: ${user.banReason || 'No reason provided'}`,
+                        403,
+                        httpStatus.FAIL
+                    )
+                );
+            }
+
             req.currentUser = user.toObject();
             req.currentUser.jti = decoded.jti; // Preserve JTI for blacklisting logic
             req.currentUser.role = decoded.role; // Ensure role is accessible directly
