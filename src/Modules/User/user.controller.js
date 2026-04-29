@@ -435,9 +435,16 @@ const login = asyncWrapper(async (req, res, next) => {
 
         return res.status(200).json({
             status: httpStatus.SUCCESS,
-            data: user.email,
             message: "successfully signed",
-            token: token
+            token: token,
+            user: {
+                _id: user._id,
+                email: user.email,
+                userName: user.userName,
+                name: user.name,
+                role: user.role,
+                avatar: user.avatar
+            }
         });
     }
 

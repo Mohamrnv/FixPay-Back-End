@@ -45,6 +45,24 @@ Monitoring market activity and resolving platform disputes.
 - **Task Deletion**: Admins can remove fraudulent or duplicate tasks.
 - **Offer Transparency**: Admins can view all offers submitted for any task to ensure fair pricing and prevent platform bypass.
 
+### E. Financial & Payments Oversight
+Tracking the platform's revenue, transactions, and payouts.
+- **Transaction History**: View all payments made between users, including platform fees.
+- **Payout Management**: Review and approve manual payout requests to workers.
+- **Refund Processing**: Handle user refund requests and resolve payment disputes.
+
+### F. Dispute Resolution Center
+Managing conflicts between users.
+- **Ticket Management**: Admins can view and respond to support tickets raised by users.
+- **Chat Logs Access**: Access task-specific chat logs strictly for resolving disputes.
+- **Mediation Actions**: Ability to issue partial refunds, cancel tasks, or adjust worker ratings.
+
+### G. System Configuration
+Global settings for the platform.
+- **Platform Fees**: Adjust the percentage fee taken from transactions.
+- **Feature Flags**: Toggle beta features on or off.
+- **API Key Management**: Manage keys for third-party integrations (e.g., identity verification services).
+
 ---
 
 ## 3. Recommended Monitoring Features (Proposals)
@@ -89,6 +107,11 @@ To make the dashboard truly "helpful" and a monitoring tool, we recommend adding
 | **Get Chat History** | `GET` | `/api/messages/:taskId/:otherUserId` | Involved Users |
 | **Counter Offer** | `PATCH` | `/api/offers/:offerId/counter` | Task Owner |
 | **Respond to Counter** | `PATCH` | `/api/offers/:offerId/respond` | Offer Worker |
+| **Get All Transactions** | `GET` | `/api/transactions` | Admin Only |
+| **Issue Refund** | `POST` | `/api/transactions/:id/refund` | Admin Only |
+| **Get Support Tickets** | `GET` | `/api/tickets` | Admin Only |
+| **Update Ticket Status** | `PATCH` | `/api/tickets/:id` | Admin Only |
+| **Update System Settings** | `PATCH` | `/api/settings` | Admin Only |
 
 ---
 
