@@ -25,6 +25,7 @@ This document lists all available API endpoints in the FixPay backend.
 | `POST` | `/complete-profile` | Add SSN and Phone to Google accounts | Authenticated |
 | `POST` | `/google-login` | Authenticate via Google OAuth | Public |
 | `POST` | `/verify-identity` | Upload ID and live face for AI verification | Authenticated |
+| `PATCH` | `/review-identity/:id` | Review pending AI verification (Accepts action: "accept"/"decline") | Admin |
 | `POST` | `/upload` | Upload profile avatar image | Authenticated |
 | `POST` | `/forgotPassword` | Request password reset OTP | Public |
 | `POST` | `/resend-resetpassword-otp` | Resend password reset OTP | Public |

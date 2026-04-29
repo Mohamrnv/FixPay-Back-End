@@ -56,23 +56,40 @@ const verifyIdentity = asyncWrapper(async (req, res, next) => {
         const isLive = data.liveness === true;
         const similarity = data.similarity || 0;
         const confidence = data.confidence || "unknown";
+        const threshold = data.threshold || 0;
 
         const isOverallValid = isFaceMatch && isLive;
 
-        const updateData = isOverallValid ? {
-            "identityVerification.status": "verified",
-            "identityVerification.verifiedAt": new Date(),
+        let status = "failed";
+        let failReason = "Liveness check failed";
+        let verifiedAt = null;
+
+        if (isOverallValid) {
+            status = "verified";
+            verifiedAt = new Date();
+            failReason = null;
+        } else if (isLive && !isFaceMatch) {
+            // Check if near to accept
+            // Calculate a reasonable margin, e.g. within 10% of the threshold
+            // Adjust this condition based on your exact scale (0-1 vs 0-100)
+            const margin = threshold > 1 ? 10 : 0.1; 
+            const isNearToAccept = similarity >= (threshold - margin);
+
+            if (isNearToAccept) {
+                status = "pending";
+                failReason = `Pending admin review. Close to passing threshold (similarity: ${similarity}, threshold: ${threshold})`;
+            } else {
+                failReason = `Face mismatch (similarity: ${similarity})`;
+            }
+        }
+
+        const updateData = {
+            "identityVerification.status": status,
+            "identityVerification.verifiedAt": verifiedAt,
             "identityVerification.similarity": similarity,
             "identityVerification.liveness": isLive,
             "identityVerification.confidence": confidence,
-            "identityVerification.failReason": null
-        } : {
-            "identityVerification.status": "failed",
-            "identityVerification.similarity": similarity,
-            "identityVerification.liveness": isLive,
-            "identityVerification.failReason": !isFaceMatch
-                ? `Face mismatch (similarity: ${similarity})`
-                : "Liveness check failed"
+            "identityVerification.failReason": failReason
         };
 
         await User.findByIdAndUpdate(req.currentUser._id, updateData);
@@ -872,6 +889,49 @@ const suspendUser = asyncWrapper(async (req, res, next) => {
     });
 });
 
+const reviewIdentityVerification = asyncWrapper(async (req, res, next) => {
+    const { id } = req.params;
+    const { action } = req.body; // "accept" or "decline"
+
+    if (!id || !action) {
+        return next(new AppError("User ID and action are required", 400, httpStatus.FAIL));
+    }
+
+    if (!["accept", "decline"].includes(action)) {
+        return next(new AppError("Invalid action. Must be 'accept' or 'decline'", 400, httpStatus.FAIL));
+    }
+
+    const user = await User.findById(id);
+    if (!user) {
+        return next(new AppError(httpMessage.NOT_FOUND, 404, httpStatus.FAIL));
+    }
+
+    const newStatus = action === "accept" ? "verified" : "failed";
+    
+    const updateData = {
+        "identityVerification.status": newStatus,
+        "identityVerification.verifiedAt": action === "accept" ? new Date() : null,
+    };
+    
+    if (action === "accept") {
+        updateData["identityVerification.failReason"] = null;
+    } else {
+        updateData["identityVerification.failReason"] = "Admin declined the verification";
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+        id,
+        updateData,
+        { new: true, select: "-password -__v" }
+    );
+
+    res.status(200).json({
+        status: httpStatus.SUCCESS,
+        data: { user: updatedUser },
+        message: `User identity verification has been ${action}ed`
+    });
+});
+
 export {
     getAllUsers,
     getUserById,
@@ -891,5 +951,6 @@ export {
     googleLogin,
     completeProfile,
     verifyIdentity,
-    suspendUser
+    suspendUser,
+    reviewIdentityVerification
 };
