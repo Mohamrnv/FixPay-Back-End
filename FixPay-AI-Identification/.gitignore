@@ -1,0 +1,12 @@
+# Python
+id_env/
+__pycache__/
+*.pyc
+results/
+debug_output/
+
+# Environment
+.env
+
+# Models (كبيرة جداً)
+~/.insightface/
