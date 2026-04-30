@@ -100,25 +100,17 @@ This document lists all available API endpoints in the FixPay backend.
 | `GET` | `/` | List all reports (paginated, filterable) | Admin |
 | `GET` | `/:id` | Get single report details | Admin |
 | `PATCH` | `/:id/status` | Update report status + admin notes | Admin |
-| `POST` | `/ban/:id` | Permanently ban a user | Admin |
-| `POST` | `/unban/:id` | Remove ban from a user | Admin |
+| `PATCH` | `/api/user/suspend/:id` | Suspend (temp) or Ban (permanent) | Admin |
 
-**GET `/`** — Query parameters: `?status=pending&reason=fraud&page=1&limit=10`
-
-**PATCH `/:id/status`** — Request body:
+**PATCH `/api/user/suspend/:id`** — Request body:
 ```json
 {
-  "status": "reviewed | resolved | dismissed",
-  "adminNotes": "Optional admin notes"
+  "reason": "Violation of terms",
+  "isPermanent": true, 
+  "suspendedUntil": "2026-05-30" 
 }
 ```
-
-**POST `/ban/:id`** — Request body:
-```json
-{
-  "banReason": "Reason for banning the user"
-}
-```
+> **Note:** If `isPermanent` is true, the user is added to the system-wide blacklist.
 
 > **Note:** Banned users receive a `403` response on every authenticated request. Admins cannot ban other admins.
 

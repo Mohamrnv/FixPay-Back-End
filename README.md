@@ -1,151 +1,81 @@
 # 💳 FixPay Back-End 🚀
 
-Welcome to the **FixPay Back-End**, a robust and secure RESTful API built with **Node.js**, **Express**, and **MongoDB**. This project provides the backbone for a payment and service-based platform, featuring advanced authentication, identity verification, and role-based access control.
+The core API for the FixPay platform, providing secure authentication, marketplace logic, real-time communication, and AI-driven identity verification.
 
 ---
 
 ## 🌟 Key Features
 
 ### 🔐 Authentication & Security
-- **Secure Registration & Login**: Multi-layer security with password hashing (Bcrypt).
-- **Google OAuth**: Integrated Google Login for seamless user experience.
-- **JWT Authentication**: Token-based security for all protected routes.
-- **OTP Verification**: Email-based OTP for account confirmation and password resets.
-- **Role-Based Access Control (RBAC)**: Distinct permissions for `User`, `Worker`, and `Admin`.
+- **JWT & Role-Based Access**: Secure access for `User`, `Worker`, and `Admin`.
+- **Permanent Banning**: Advanced moderation that prevents re-registration by matching ID/SSN/Email data.
+- **Data Encryption**: Deterministic AES-256-CBC encryption for sensitive PII.
 
-### 👤 User Management
-- **Profile Customization**: Update user details and upload profile images via Cloudinary.
-- **AI-Powered Identity Verification**: Advanced identity verification using a dedicated Python service for ID OCR, fraud detection, and live face matching.
-- **Admin Dashboard**: Comprehensive tools for managing users, assigning admins, and account deletion.
+### 👤 User & Identity
+- **AI-Powered Identity Verification**: Integration with a Python/Flask service for face matching and liveness detection.
+- **Admin Dashboard Integration**: Specialized endpoints for audit, suspension, and reporting.
+- **Profile Management**: Multi-platform profile handling via Cloudinary.
 
-### 📂 Category & Worker Services
-- **Category Management**: Organize services into categories (Admin only).
-- **Worker Discovery**: Filter and find workers based on specific categories.
-
-### 📧 Communication & Storage
-- **Automated Emails**: Integrated Nodemailer for OTPs and notifications.
-- **Cloud Media Storage**: High-performance image uploads and storage using Cloudinary.
+### 🚩 Marketplace & Moderation
+- **Task & Offer Engine**: Full lifecycle management of job requests and worker bids.
+- **Reporting System**: Dedicated module for users to report inappropriate behavior or fraud.
+- **Real-Time Communication**: Socket.io integration for instant messaging and location tracking.
 
 ---
 
-## 🛠️ Tech Stack
+## ⚙️ Setup & Installation
 
-- **Runtime**: Node.js
-- **Framework**: Express.js
-- **Database**: MongoDB (Mongoose ODM)
-- **Authentication**: JWT & Passport (Google OAuth)
-- **File Handling**: Multer & Cloudinary
-- **Validation**: Express-Validator
-- **Communication**: Nodemailer
+### 1. Environment Variables
+Create a `.env` file with the following keys:
+```env
+PORT=2001
+MONGODB_URI=your_mongodb_uri
+JWT_KEY=your_secret_key
 
----
+# AI Verification Service
+PYTHON_API_URL=http://localhost:5000
 
-## 🚀 Getting Started
+# Cloudinary
+CLOUD_NAME=...
+CLOUD_KEY=...
+CLOUD_SECRET=...
 
-### 📋 Prerequisites
-- Node.js (v18+ recommended)
-- MongoDB account (Atlas or Local)
-- Cloudinary account (for image uploads)
-- Google Cloud Console project (for Google Auth)
+# Email
+USER_EMAIL=...
+USER_PASSWORD=...
+```
 
-### ⚙️ Installation
+### 2. Run with Docker (Recommended)
+```bash
+docker-compose up backend
+```
 
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/MohamedHusseinTammaa/FixPay-Back-End-.git
-   cd FixPay-Back-End-
-   ```
-
-2. **Install dependencies:**
-   ```bash
-   npm install
-   ```
-
-3. **Environment Setup:**
-   Create a `.env` file in the root directory and add the following:
-   ```env
-   PORT=3000
-   MONGODB_URI=your_mongodb_uri
-   JWT_SECRET=your_secret_key
-   
-   # Cloudinary Config
-   CLOUDINARY_CLOUD_NAME=your_cloud_name
-   CLOUDINARY_API_KEY=your_api_key
-   CLOUDINARY_API_SECRET=your_api_secret
-   
-   # Email Config
-   EMAIL_USER=your_email
-   EMAIL_PASS=your_app_password
-   
-   # Google Auth
-   GOOGLE_CLIENT_ID=your_google_client_id
-   ```
-
-4. **Run the server:**
-   ```bash
-   npm run test  # This uses nodemon to start 'src/index.js'
-   ```
-
----
-
-## 🛣️ API Endpoints Summary
-
-### 👤 User Routes (`/api/user`)
-- `POST /register` - Create a new account.
-- `POST /login` - Sign in to your account.
-- `POST /google-login` - Authentication via Google.
-- `POST /confirmEmail` - Confirm account via OTP.
-- `PATCH /assign-admin/:id` - (Admin) Promote a user to Admin.
-- `POST /verify-identity` - Upload ID and live image for verification.
-
-### 📁 Category Routes (`/api/categories`)
-- `GET /` - List all categories.
-- `GET /:id` - Get category details.
-- `GET /:id/workers` - Get all workers in a specific category.
-- `POST /` - (Admin) Create a new category.
-
-### 📋 Task Routes (`/api/tasks`)
-- `GET /open` - List all available (open) tasks with pagination.
-- `GET /:taskId/offers` - (Customer/Admin) View all offers submitted for a specific task.
-- `POST /` - (Customer) Create a new service task (job request). Supports up to 5 image uploads and `locationCoords`.
-- `PATCH /:taskId` - (Customer/Admin) Update task details and images.
-- `DELETE /:taskId` - (Customer/Admin) Delete a specific task.
-
-### 🏷️ Offer Routes (`/api/offers`)
-- `POST /` - (Worker) Submit a bid/offer for an open task. Returns OSRM `estimatedTime` & `estimatedDistance`.
-- `PATCH /:offerId/accept` - (Customer) Accept a specific offer and assign the worker to the task.
-- `PATCH /:offerId/counter` - (Customer) Propose a new price (Counter-bid).
-- `PATCH /:offerId/respond` - (Worker) Respond to a customer's counter-bid.
-
-### 💬 Message Routes (`/api/messages`)
-- `POST /` - Send a message to another user.
-- `GET /:otherUserId` - Get chat history between current user and another user.
-
-### 🔌 Real-Time Sockets (Socket.io)
-- Supports real-time bidirectional communication.
-- Requires JWT token on connection (`auth.token` or `authorization` header).
-- **Chat:** Emit and listen to events like `newMessage` for live messaging.
-- **Live Tracking:** Uses `trackingStarted`, `updateLocation`, and `locationUpdated` events for map tracking.
-
----
-
-## 📁 Project Structure
-
-```text
-src/
-├── DB/             # Database connection & schemas
-├── Middlewares/    # Custom middlewares (auth, validation)
-├── Models/         # Mongoose models
-├── Modules/        # Feature-based logic (Category, User)
-├── Routes/         # API Route definitions
-├── Utils/          # Helpers, enums, and constants
-└── index.js        # Main entry point
+### 3. Manual Start
+```bash
+npm install
+npm run dev
 ```
 
 ---
 
-## 📄 License
-This project is licensed under the **ISC License**.
+## 🛣️ API Modules
+
+### 👥 User (`/api/user`)
+- `POST /verify-identity`: Multi-part upload for AI verification.
+- `PATCH /suspend/:id`: Temporarily suspend or **permanently ban** a user.
+- `PATCH /review-identity/:id`: Admin manual approval of verification results.
+
+### 🚩 Reports (`/api/reports`)
+- `POST /`: Submit a report.
+- `GET /`: (Admin) View all community reports.
+- `PATCH /:id/status`: (Admin) Resolve or dismiss a report.
+
+### 🛠️ Other Modules
+- `/api/tasks`: Marketplace operations.
+- `/api/offers`: Worker bidding logic.
+- `/api/categories`: Service categorization.
+- `/api/messages`: Real-time chat history.
 
 ---
-*Developed with ❤️ by the FixPay Team.*
+
+Developed by **Mohamed Hussein Tammaa**

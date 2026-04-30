@@ -1,118 +1,50 @@
-# FixPay Admin Dashboard - Frontend Technical Specification
+# Admin Dashboard - Technical Specifications
 
-This document outlines the requirements, features, and suggested monitoring tools for the FixPay Admin Dashboard. This is intended to guide the development of the admin portal for managing users, tasks, and overall platform health.
+This document outlines the features and implementation details of the FixPay Admin Dashboard.
 
----
-
-## 1. Dashboard Overview
-The Admin Dashboard is the central command center for FixPay. Its primary goal is to provide full visibility into platform activity, manage user behavior, and ensure trust through identity verification and category management.
-
-### Admin Responsibilities
-- **Moderation**: Suspending or banning users who violate terms.
-- **Trust & Safety**: Monitoring identity verification processes.
-- **Platform Growth**: Managing service categories.
-- **Support**: Viewing task details and offers to resolve disputes.
-
----
-
-## 2. Core Functional Modules
-
-### A. User Management
-Full control over the platform's user base.
-- **User List View**: Searchable table of all users (Customers and Workers).
-- **Profile Management**: View detailed profiles including sensitive data (SSN, Address).
-- **Suspension System**: 
-    - **Feature**: Temporarily block users from logging in.
-    - **Requirement**: Input field for `suspendUntil` (Date) and `suspensionReason`.
-- **Ban System**: Ability to permanently ban users from the platform.
-- **Role Assignment**: Promote trusted users to `Admin` status.
-
-### B. Category Management
-Maintaining the taxonomy of services offered.
-- **List Categories**: View all active service categories.
-- **Create Category**: Add new service types (e.g., "Plumbing", "Electrical", "Cleaning").
-- **Worker Filtering**: View all workers registered under a specific category.
-
-### C. Identity Verification Audit
-Monitoring the security layer.
-- **Status Monitoring**: Filter users by verification status (`unverified`, `pending`, `verified`, `failed`).
-- **Fail Analysis**: View the `failReason` for users who failed automated verification to assist them manually.
-
-### D. Task & Offer Oversight
-Monitoring market activity and resolving platform disputes.
-- **Task Monitoring**: View open, in-progress, and completed tasks.
-- **Task Moderation**: Admins can edit task details (title, description, budget, etc.) if content is inappropriate.
-- **Task Deletion**: Admins can remove fraudulent or duplicate tasks.
-- **Offer Transparency**: Admins can view all offers submitted for any task to ensure fair pricing and prevent platform bypass.
-
-### E. Financial & Payments Oversight
-Tracking the platform's revenue, transactions, and payouts.
-- **Transaction History**: View all payments made between users, including platform fees.
-- **Payout Management**: Review and approve manual payout requests to workers.
-- **Refund Processing**: Handle user refund requests and resolve payment disputes.
-
-### F. Dispute Resolution Center
-Managing conflicts between users.
-- **Ticket Management**: Admins can view and respond to support tickets raised by users.
-- **Chat Logs Access**: Access task-specific chat logs strictly for resolving disputes.
-- **Mediation Actions**: Ability to issue partial refunds, cancel tasks, or adjust worker ratings.
-
-### G. System Configuration
-Global settings for the platform.
-- **Platform Fees**: Adjust the percentage fee taken from transactions.
-- **Feature Flags**: Toggle beta features on or off.
-- **API Key Management**: Manage keys for third-party integrations (e.g., identity verification services).
+## 🏛️ Routing
+*   **Public Access**: `/` (Landing Page), `/login` (Admin Sign-in)
+*   **Admin Base**: `/admin` (Protected)
+*   **Dashboard**: `/admin` (Overview metrics)
+*   **User Management**: `/admin/users`
+*   **Reports Management**: `/admin/reports`
+*   **Verification Audit**: `/admin/verification`
+*   **Marketplace Control**: `/admin/categories`, `/admin/tasks`
+*   **System Logs**: `/admin/settings` (Includes backend system logs)
 
 ---
 
-## 3. Recommended Monitoring Features (Proposals)
+## 👥 User Management (`/admin/users`)
+*   **Search & Filter**: Find users by name, email, role, or status (Active, Suspended, Banned).
+*   **Promotion**: Promote verified users to the Admin role.
+*   **Suspension**: 
+    *   **Temporary**: Set a `suspendedUntil` date.
+    *   **Permanent (Ban)**: Set `isPermanent: true`. This sets `isBanned: true` and records the identity data (SSN/Email) to prevent future re-registration.
+*   **Identity Audit**: View full user details including verification status and linked national ID data.
 
-To make the dashboard truly "helpful" and a monitoring tool, we recommend adding these analytics/views:
+## 🚩 Reports Management (`/admin/reports`)
+*   **Community Oversight**: Monitor all user-submitted reports regarding behavior or service quality.
+*   **Resolution Workflow**:
+    *   **Resolved**: Confirm the report and take necessary action (suspension/ban).
+    *   **Dismissed**: Reject invalid or false reports.
+*   **Audit Trail**: Tracks which administrator resolved the report and their justification notes.
 
-| Feature | Description | Benefit |
-| :--- | :--- | :--- |
-| **KPI Dashboard** | Metrics cards showing Total Users, Active Tasks, and Total Budget volume. | Instant pulse on platform health. |
-| **Worker/Customer Ratio** | A chart showing the balance between service providers and seekers. | Identifies if more marketing is needed for one side. |
-| **Verification Queue** | A dedicated list of users currently in "pending" verification. | Prioritizes manual review if needed. |
-| **Suspension Log** | A history of who was suspended, by whom, and why. | Provides audit trails for admin actions. |
-| **Growth Analytics** | Line chart showing new registrations over the last 30 days. | Monitors the impact of marketing campaigns. |
-
----
-
-## 4. UI/UX Design Guidelines
-
-- **Rich Aesthetics**: Use a professional dark/light mode toggle.
-- **Information Density**: Use data tables with pagination and column sorting.
-- **Visual Cues**: 
-    - Green badges for `Verified` users.
-    - Red labels for `Suspended` users.
-    - Yellow for `Pending` items.
-- **Search & Filter**: Every list (Users, Tasks, Categories) must have a robust search bar and status filters.
+## 🛡️ AI Verification Audit (`/admin/verification`)
+*   **Face Matching**: Displays the comparison of the ID photo vs. the live selfie.
+*   **Liveness Verification**: Confirmation of anti-spoofing results from the AI service.
+*   **Threshold Review**: Manual overrides for edge cases where similarity scores are near the threshold.
 
 ---
 
-## 5. Backend API Reference for Frontend
-
-| Action | Method | Endpoint | Access |
-| :--- | :--- | :--- | :--- |
-| **Get All Users** | `GET` | `/api/user` | Admin Only |
-| **Suspend/Ban User** | `PATCH` | `/api/user/suspend/:id` | Admin Only |
-| **Assign Admin** | `PATCH` | `/api/user/assign-admin/:id` | Admin Only |
-| **Create Category** | `POST` | `/api/categories` | Admin Only |
-| **View Task Offers** | `GET` | `/api/tasks/:taskId/offers` | Admin/Owner |
-| **Update Task** | `PATCH` | `/api/tasks/:taskId` | Admin/Owner |
-| **Delete Task** | `DELETE` | `/api/tasks/:taskId` | Admin/Owner |
-| **Send Message** | `POST` | `/api/messages` | Owner/Worker |
-| **Get Chat History** | `GET` | `/api/messages/:taskId/:otherUserId` | Involved Users |
-| **Counter Offer** | `PATCH` | `/api/offers/:offerId/counter` | Task Owner |
-| **Respond to Counter** | `PATCH` | `/api/offers/:offerId/respond` | Offer Worker |
-| **Get All Transactions** | `GET` | `/api/transactions` | Admin Only |
-| **Issue Refund** | `POST` | `/api/transactions/:id/refund` | Admin Only |
-| **Get Support Tickets** | `GET` | `/api/tickets` | Admin Only |
-| **Update Ticket Status** | `PATCH` | `/api/tickets/:id` | Admin Only |
-| **Update System Settings** | `PATCH` | `/api/settings` | Admin Only |
+## 📊 Dashboard Metrics
+*   **Real-time Stats**: Active Users, Pending Reports, Completed Tasks, Total Revenue.
+*   **Trends**: Growth charts for user registration and task volume using Recharts.
 
 ---
 
-## 6. Security Note
-All routes listed above require the `Authorization: Bearer <token>` header. The frontend must ensure that if a user's role is not `admin`, these views are restricted and redirected to the home page.
+## 🛠️ Tech Stack
+*   **React 19**: Modern functional components with hooks.
+*   **Material UI**: Premium custom-themed components (Forest Green & Navy Blue).
+*   **TanStack Query**: Robust server-state management with automatic refetching.
+*   **DataGrid**: High-performance tables for managing large user and task datasets.
+*   **Axios**: Centralized API client with automatic token attachment.
