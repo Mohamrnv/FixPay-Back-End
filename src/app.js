@@ -25,12 +25,18 @@ app.use('/api/messages', messageRouter);
 app.use('/api/reports', reportRouter);
 app.use('/api/logs', logsRouter);
 
+// Paths browsers hit automatically — not worth logging as they are not real errors.
+const SILENT_404_PATHS = new Set(["/", "/favicon.ico", "/robots.txt", "/apple-touch-icon.png"]);
+
 app.use((req, res) => {
-    SystemLogger.warn(`Route not found: ${req.method} ${req.originalUrl}`, {
-        method : req.method,
-        path   : req.originalUrl,
-        ip     : req.ip
-    });
+    // Only log genuine missing API routes, skip browser noise
+    if (!SILENT_404_PATHS.has(req.path)) {
+        SystemLogger.warn(`Route not found: ${req.method} ${req.originalUrl}`, {
+            method : req.method,
+            path   : req.originalUrl,
+            ip     : req.ip
+        });
+    }
     res.status(404).json({
         status  : httpStatus.NOT_FOUND,
         data    : null,
