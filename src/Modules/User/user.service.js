@@ -49,28 +49,6 @@ const editUserService = async (id, user) => {
     return await User.findByIdAndUpdate(id, { $set: user }, { new: true });
 };
 
-const deleteUserService = async (id) => {
-    const deleted = await User.findByIdAndUpdate(id, {
-        deleted: true,
-        deletedAt: Date.now(),
-        restoreUntil: Date.now() + 30 * 24 * 60 * 60 * 1000
-    }, { new: true });
-    return deleted;
-};
-const restoreDeletedUserService = async (id) => {
-    const user = await User.findById(id);
-
-    if (!user) return;
-    if (!user.deletedAt || !user.restoreUntil) return;
-    if (Date.now() > user.restoreUntil) return;
-    user.deletedAt = undefined;
-    user.restoreUntil = undefined;
-    user.deleted = false;
-
-    await user.save();
-    return user;
-
-}
 const forgotPasswordService = async (email) => {
     const user = await User.findOne({ email }).select("+resetPassword.createdAt +resetPassword.expiresAt");
 
@@ -132,13 +110,21 @@ const resetPasswordService = async (email, otp, newPassword) => {
     return user;
 };
 
-const suspendUserService = async (id, suspendUntil, suspensionReason) => {
-    return await User.findByIdAndUpdate(id, {
-        $set: {
-            suspendedUntil: new Date(suspendUntil),
-            suspensionReason: suspensionReason
-        }
-    }, { new: true });
+const suspendUserService = async (id, suspendUntil, suspensionReason, isPermanent = false) => {
+    const updateData = {
+        suspensionReason: suspensionReason
+    };
+
+    if (isPermanent) {
+        updateData.isBanned = true;
+        updateData.bannedAt = new Date();
+        updateData.banReason = suspensionReason;
+    } else {
+        updateData.suspendedUntil = new Date(suspendUntil);
+        updateData.isBanned = false; // Ensure it's unbanned if setting a temporary suspension
+    }
+
+    return await User.findByIdAndUpdate(id, { $set: updateData }, { new: true });
 };
 
 export {
@@ -147,10 +133,8 @@ export {
     registerService,
     loginService,
     editUserService,
-    deleteUserService,
     forgotPasswordService,
     resetPasswordService,
-    restoreDeletedUserService,
     findUserByService,
     suspendUserService
-};
+};

@@ -8,7 +8,7 @@ This document outlines the requirements, features, and suggested monitoring tool
 The Admin Dashboard is the central command center for FixPay. Its primary goal is to provide full visibility into platform activity, manage user behavior, and ensure trust through identity verification and category management.
 
 ### Admin Responsibilities
-- **Moderation**: Suspending or deleting users who violate terms.
+- **Moderation**: Suspending or banning users who violate terms.
 - **Trust & Safety**: Monitoring identity verification processes.
 - **Platform Growth**: Managing service categories.
 - **Support**: Viewing task details and offers to resolve disputes.
@@ -24,7 +24,7 @@ Full control over the platform's user base.
 - **Suspension System**: 
     - **Feature**: Temporarily block users from logging in.
     - **Requirement**: Input field for `suspendUntil` (Date) and `suspensionReason`.
-- **Account Recovery**: Ability to restore accounts that were marked for deletion (within 30 days).
+- **Ban System**: Ability to permanently ban users from the platform.
 - **Role Assignment**: Promote trusted users to `Admin` status.
 
 ### B. Category Management
@@ -96,8 +96,7 @@ To make the dashboard truly "helpful" and a monitoring tool, we recommend adding
 | Action | Method | Endpoint | Access |
 | :--- | :--- | :--- | :--- |
 | **Get All Users** | `GET` | `/api/user` | Admin Only |
-| **Suspend User** | `PATCH` | `/api/user/suspend/:id` | Admin Only |
-| **Delete User** | `DELETE` | `/api/user/:id` | Admin Only |
+| **Suspend/Ban User** | `PATCH` | `/api/user/suspend/:id` | Admin Only |
 | **Assign Admin** | `PATCH` | `/api/user/assign-admin/:id` | Admin Only |
 | **Create Category** | `POST` | `/api/categories` | Admin Only |
 | **View Task Offers** | `GET` | `/api/tasks/:taskId/offers` | Admin/Owner |

@@ -408,6 +408,16 @@ const login = asyncWrapper(async (req, res, next) => {
             { expiresIn: '30m' }
         );
 
+        if (user.isBanned) {
+            return next(
+                new AppError(
+                    `Your account is permanently banned. Reason: ${user.banReason || 'No reason provided'}`,
+                    403,
+                    httpStatus.FAIL
+                )
+            );
+        }
+
         if (user.suspendedUntil && user.suspendedUntil > Date.now()) {
             return next(
                 new AppError(
@@ -416,21 +426,6 @@ const login = asyncWrapper(async (req, res, next) => {
                     httpStatus.FAIL
                 )
             );
-        }
-
-        if (user.deleted) {
-            if (Date.now() <= user.restoreUntil.getTime()) {
-
-                const restored = await Services.restoreDeletedUserService(user._id);
-                if (!restored) {
-                    return next(new AppError("Invalid email or password", 401, httpStatus.FAIL));
-                }
-            } else {
-
-                return next(
-                    new AppError("Your account can no longer be restored", 403, httpStatus.FAIL)
-                );
-            }
         }
 
         return res.status(200).json({
@@ -616,48 +611,6 @@ const editUser = asyncWrapper(async (req, res, next) => {
     res.status(200).json({
         status: httpStatus.SUCCESS,
         data: updated,
-    });
-});
-const deleteUser = asyncWrapper(async (req, res, next) => {
-    const { id } = req.params;
-    if (!id) {
-        return next(new AppError(httpMessage.BAD_REQUEST, 400, httpStatus.FAIL));
-    }
-    const deleted = await Services.deleteUserService(id);
-
-    if (!deleted) {
-        return next(new AppError(httpMessage.NOT_FOUND, 404, httpStatus.FAIL));
-    }
-    const token = req.currentUser
-    console.log({ tokenJTI: token.jti });
-
-    const data = await blackListedTokenModel.create({
-        tokenId: req.currentUser.jti,
-        expiresAt: new Date(Date.now())
-    });
-
-    res.status(200).json({
-        status: httpStatus.SUCCESS,
-        data: deleted,
-        token: data,
-        days: "you have 30 days to restore your account",
-        restore_until: deleted.restoreUntil
-    });
-});
-const restoreDeletedAccount = asyncWrapper(async (req, res, next) => {
-    const userId = req.currentUser._id;
-    const restored = Services.restoreDeletedUserService(userId);
-
-    if (!restored) return next(new AppError(httpMessage.NOT_FOUND, 404, httpStatus.NOT_FOUND));
-
-    return res.status(200).json({
-        status: httpStatus.SUCCESS,
-        message: "Your account has been restored successfully",
-        data: {
-            _id: restored._id,
-            email: restored.email,
-            userName: restored.userName
-        }
     });
 });
 const forgotPassword = asyncWrapper(async (req, res, next) => {
@@ -877,13 +830,13 @@ const assignAdmin = asyncWrapper(async (req, res, next) => {
 
 const suspendUser = asyncWrapper(async (req, res, next) => {
     const { id } = req.params;
-    const { suspendUntil, suspensionReason } = req.body;
+    const { suspendUntil, suspensionReason, isPermanent } = req.body;
 
-    if (!id || !suspendUntil) {
-        return next(new AppError("User ID and suspension end date are required", 400, httpStatus.FAIL));
+    if (!id || (!suspendUntil && !isPermanent)) {
+        return next(new AppError("User ID and suspension end date (or permanent flag) are required", 400, httpStatus.FAIL));
     }
 
-    const updatedUser = await Services.suspendUserService(id, suspendUntil, suspensionReason);
+    const updatedUser = await Services.suspendUserService(id, suspendUntil, suspensionReason, isPermanent);
 
     if (!updatedUser) {
         return next(new AppError(httpMessage.NOT_FOUND, 404, httpStatus.FAIL));
@@ -892,7 +845,9 @@ const suspendUser = asyncWrapper(async (req, res, next) => {
     res.status(200).json({
         status: httpStatus.SUCCESS,
         data: { user: updatedUser },
-        message: `User suspended until ${new Date(suspendUntil).toLocaleString()}`
+        message: isPermanent 
+            ? "User banned forever successfully" 
+            : `User suspended until ${new Date(suspendUntil).toLocaleString()}`
     });
 });
 
@@ -945,7 +900,6 @@ export {
     register,
     editUser,
     login,
-    deleteUser,
     confirmEmail,
     resendConfirmationOtp,
     logout,
@@ -953,7 +907,6 @@ export {
     resetPassword,
     resendResetPasswordOtp,
     profileImage,
-    restoreDeletedAccount,
     assignAdmin,
     googleLogin,
     completeProfile,

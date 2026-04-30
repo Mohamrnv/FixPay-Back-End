@@ -11,7 +11,6 @@ import {
   editUser,
   getAllUsers,
   getUserById,
-  deleteUser,
   register,
   login,
   confirmEmail,
@@ -21,7 +20,6 @@ import {
   resetPassword,
   resendResetPasswordOtp,
   profileImage,
-  restoreDeletedAccount,
   assignAdmin,
   suspendUser,
   googleLogin,
@@ -35,7 +33,6 @@ const router = Router();
 router.get("/", verifyToken, getAllUsers);
 router.get("/:id", verifyToken, getUserById);
 router.patch("/:id", verifyToken, allowedTo(Roles.admin), editUser);
-router.delete("/:id", verifyToken, allowedTo(Roles.admin), deleteUser);
 router.patch("/assign-admin/:id", verifyToken, allowedTo(Roles.admin), assignAdmin);
 router.patch("/suspend/:id", verifyToken, allowedTo(Roles.admin), suspendUser);
 router.patch("/review-identity/:id", verifyToken, allowedTo(Roles.admin), reviewIdentityVerification);

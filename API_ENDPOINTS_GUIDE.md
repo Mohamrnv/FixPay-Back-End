@@ -14,9 +14,8 @@ This document lists all available API endpoints in the FixPay backend.
 | `GET` | `/` | List all users | Admin |
 | `GET` | `/:id` | Get user details by ID | Admin / Owner |
 | `PATCH` | `/:id` | Update user profile | Admin |
-| `DELETE` | `/:id` | Hard delete a user | Admin |
 | `PATCH` | `/assign-admin/:id` | Promote a user to Admin | Admin |
-| `PATCH` | `/suspend/:id` | Suspend a user for a specific time | Admin |
+| `PATCH` | `/suspend/:id` | Suspend or Permanently Ban a user | Admin |
 | `POST` | `/register` | Register a new user (Accepts `locationCoords`) | Public |
 | `POST` | `/login` | Authenticate user | Public |
 | `POST` | `/logout` | Invalidate current session | Authenticated |

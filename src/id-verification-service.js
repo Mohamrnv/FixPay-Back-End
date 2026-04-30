@@ -27,7 +27,7 @@ const router = express.Router();
 
 // ── Config ────────────────────────────────────────────────────────────────────
 const PYTHON_API_URL = process.env.PYTHON_API_URL ?? "http://localhost:5000";
-const PORT = process.env.PORT ?? 3000;
+const PORT = process.env.PORT ?? 2001;
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
 // ── Multer (in-memory, no disk write) ─────────────────────────────────────────
@@ -71,7 +71,7 @@ router.post(
 
       // ── 2. Build multipart form for Python API ──────────────────────────
       const form = new FormData();
-      
+
       form.append("id_image", idFile.buffer, { filename: idFile.originalname, contentType: "image/jpeg" });
       form.append("live_image", liveFile.buffer, { filename: liveFile.originalname, contentType: "image/jpeg" });
 
