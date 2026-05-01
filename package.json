@@ -6,7 +6,9 @@
   "type": "module",
   "scripts": {
     "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest",
-    "dev": "nodemon src/index.js"
+    "dev": "concurrently -n \"NODE,AI\" -c \"blue,green\" \"npm run dev:node\" \"npm run dev:ai\"",
+    "dev:node": "nodemon src/index.js",
+    "dev:ai": "cd FixPay-AI-Identification && .\\.venv\\Scripts\\python.exe app.py"
   },
   "jest": {
     "testEnvironment": "node",
@@ -49,6 +51,7 @@
     "validator": "^13.15.15"
   },
   "devDependencies": {
+    "concurrently": "^9.2.1",
     "cross-env": "^10.1.0",
     "jest": "^30.3.0",
     "mongodb-memory-server": "^11.0.1",
