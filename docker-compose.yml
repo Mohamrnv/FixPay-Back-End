@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  # Database
+  mongodb:
+    image: mongo:latest
+    container_name: fixpay-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    restart: always
+
+  # AI Identification Service (Python)
+  ai-service:
+    build:
+      context: ./FixPay-AI-Identification
+    container_name: fixpay-ai-service
+    ports:
+      - "5000:5000"
+    environment:
+      - SIMILARITY_THRESHOLD=0.45
+      - LOG_LEVEL=INFO
+    restart: always
+
+  # Main Node.js API
+  api:
+    build:
+      context: .
+    container_name: fixpay-backend-api
+    ports:
+      - "2001:2001"
+    env_file:
+      - .env
+    environment:
+      - PYTHON_API_URL=http://ai-service:5000
+      - MONGODB_URI=mongodb://mongodb:27017/fixpay
+    depends_on:
+      - mongodb
+      - ai-service
+    restart: always
+
+volumes:
+  mongodb_data:
