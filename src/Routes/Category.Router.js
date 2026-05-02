@@ -12,7 +12,7 @@ import {
 
 const router = Router();
 
-router.get("/", verifyToken, getAllCategories);
+router.get("/", getAllCategories);
 router.get("/:id/workers", verifyToken, getAllWorkersByCategory);
 router.get("/:id", verifyToken, getCategoryById);
 
