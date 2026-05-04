@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { verifyToken } from "../Middlewares/verifytoken.js";
 import { taskValidationSchema } from "../Modules/Task/task.validation.js";
-import { createTask, getOpenTasks, updateTask, deleteTask } from "../Modules/Task/task.controller.js";
+import { createTask, getOpenTasks, updateTask, deleteTask, getWorkerTasks, getCustomerTasks } from "../Modules/Task/task.controller.js";
 import { getTaskOffers } from "../Modules/Offer/offer.controller.js";
 import { allowedTo } from "../Middlewares/allowedTo.js";
 import { Roles } from "../Utils/enums/usersRoles.js";
@@ -10,6 +10,8 @@ import { memoryFileUpload } from "../multer/multer.js";
 const router = Router();
 
 router.get("/open", verifyToken, getOpenTasks);
+router.get("/worker", verifyToken, allowedTo(Roles.worker), getWorkerTasks);
+router.get("/customer", verifyToken, allowedTo(Roles.customer), getCustomerTasks);
 router.get("/:taskId/offers", verifyToken, allowedTo(Roles.customer, Roles.admin), getTaskOffers);
 router.post("/",
     verifyToken,

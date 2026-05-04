@@ -6,6 +6,7 @@ import * as httpStatus from "../../Utils/Http/httpStatusText.js";
 import { validationResult } from "express-validator";
 import { asyncWrapper } from "../../Utils/Errors/ErrorWrapper.js";
 import { TaskStatus } from "../../Utils/enums/taskStatus.js";
+import { Roles } from "../../Utils/enums/usersRoles.js";
 
 import cloudinary from "../../Utils/cloud/cloudinary.js";
 
@@ -71,14 +72,101 @@ export const getOpenTasks = asyncWrapper(async (req, res, next) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    const tasks = await Task.find({ status: TaskStatus.OPEN })
+    let filter = { status: TaskStatus.OPEN };
+
+    // Apply restrictions based on role
+    if (req.currentUser.role === Roles.worker) {
+        if (req.currentUser.categoryId) {
+            filter.categoryId = req.currentUser.categoryId;
+        } else {
+            return res.status(200).json({
+                status: httpStatus.SUCCESS,
+                data: {
+                    tasks: [],
+                    pagination: { totalTasks: 0, page, limit, totalPages: 0 }
+                }
+            });
+        }
+    } else if (req.currentUser.role === Roles.user) {
+        filter.customerId = req.currentUser._id;
+    }
+
+    const tasks = await Task.find(filter)
         .populate("categoryId", "name")
         .populate("customerId", "userName name avatar")
         .skip(skip)
         .limit(limit)
         .sort({ createdAt: -1 });
 
-    const totalTasks = await Task.countDocuments({ status: TaskStatus.OPEN });
+    const totalTasks = await Task.countDocuments(filter);
+
+    res.status(200).json({
+        status: httpStatus.SUCCESS,
+        data: {
+            tasks,
+            pagination: {
+                totalTasks,
+                page,
+                limit,
+                totalPages: Math.ceil(totalTasks / limit)
+            }
+        }
+    });
+});
+
+export const getWorkerTasks = asyncWrapper(async (req, res, next) => {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const categoryId = req.currentUser.categoryId;
+
+    if (!categoryId) {
+        return next(new AppError("Worker has no assigned category", 400, httpStatus.FAIL));
+    }
+
+    const tasks = await Task.find({ 
+        status: TaskStatus.OPEN, 
+        categoryId: categoryId 
+    })
+    .populate("categoryId", "name")
+    .populate("customerId", "userName name avatar")
+    .skip(skip)
+    .limit(limit)
+    .sort({ createdAt: -1 });
+
+    const totalTasks = await Task.countDocuments({ 
+        status: TaskStatus.OPEN, 
+        categoryId: categoryId 
+    });
+
+    res.status(200).json({
+        status: httpStatus.SUCCESS,
+        data: {
+            tasks,
+            pagination: {
+                totalTasks,
+                page,
+                limit,
+                totalPages: Math.ceil(totalTasks / limit)
+            }
+        }
+    });
+});
+
+export const getCustomerTasks = asyncWrapper(async (req, res, next) => {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const tasks = await Task.find({ customerId: req.currentUser._id })
+        .populate("categoryId", "name")
+        .populate("customerId", "userName name avatar")
+        .skip(skip)
+        .limit(limit)
+        .sort({ createdAt: -1 });
+
+    const totalTasks = await Task.countDocuments({ customerId: req.currentUser._id });
 
     res.status(200).json({
         status: httpStatus.SUCCESS,
