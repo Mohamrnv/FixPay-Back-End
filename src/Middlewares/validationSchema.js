@@ -86,7 +86,7 @@ export const registerSchema = {
     },
     email: {
         trim: true,
-        normalizeEmail: true,
+        normalizeEmail: { options: { gmail_remove_dots: false } },
         isEmail: { errorMessage: "Please enter a valid email address" },
         notEmpty: { errorMessage: "Email is required" },
         isLength: { 
@@ -197,7 +197,7 @@ export const confirmEmailSchema = {
 export const loginSchema = {
     email: {
         trim: true,
-        normalizeEmail: true,
+        normalizeEmail: { options: { gmail_remove_dots: false } },
         isEmail: { errorMessage: "you need to enter Email format !" },
         notEmpty: { errorMessage: "you need to enter an Email !" },
         isLength: { options: { min: 5, max: 100 }, errorMessage: "email must be from 5 to 100 chars" }
