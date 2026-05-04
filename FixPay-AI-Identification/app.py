@@ -14,6 +14,9 @@ import traceback
 from concurrent.futures import ThreadPoolExecutor, Future
 from pathlib import Path
 
+from dotenv import load_dotenv
+load_dotenv()
+
 import cv2
 import numpy as np
 from flask import Flask, request, jsonify, g
@@ -353,4 +356,6 @@ def _response(**kwargs) -> dict:
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=False)
+    port = int(os.getenv("PORT", 5000))
+    host = os.getenv("HOST", "0.0.0.0")
+    app.run(host=host, port=port, debug=False)
