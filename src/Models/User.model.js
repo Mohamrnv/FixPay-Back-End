@@ -2,23 +2,18 @@ import mongoose from "mongoose";
 import validator from "validator";
 import { Roles } from "../Utils/enums/usersRoles.js";
 import { OtpTypesEnum } from '../Utils/enums/usersRoles.js'
-import { encrypt, decrypt } from "../Utils/Encrypt/crypt.js";
 
 const usersSchema = new mongoose.Schema({
     name: {
-        first: { type: String, set: (v) => encrypt(v), get: (v) => decrypt(v) },
-        last: { type: String, set: (v) => encrypt(v), get: (v) => decrypt(v) }
+        first: { type: String },
+        last: { type: String }
     },
     userName: {
         type: String,
-        unique: true,
-        set: (v) => encrypt(v),
-        get: (v) => decrypt(v)
+        unique: true
     },
     dateOfBirth: {
-        type: String,
-        set: (v) => encrypt(v),
-        get: (v) => decrypt(v)
+        type: String
     },
     gender: {
         type: Boolean // false = male, true = female
@@ -26,9 +21,7 @@ const usersSchema = new mongoose.Schema({
 
     email: {
         type: String,
-        unique: true,
-        set: (v) => encrypt(v),
-        get: (v) => decrypt(v)
+        unique: true
     },
     password: {
         type: String,
@@ -54,14 +47,12 @@ const usersSchema = new mongoose.Schema({
         type: String,
         unique: true,
         sparse: true,
-        select: false,
-        set: (v) => encrypt(v),
-        get: (v) => decrypt(v)
+        select: false
     },
     address: {
-        government: { type: String, set: (v) => encrypt(v), get: (v) => decrypt(v) },
-        city: { type: String, set: (v) => encrypt(v), get: (v) => decrypt(v) },
-        street: { type: String, set: (v) => encrypt(v), get: (v) => decrypt(v) },
+        government: { type: String },
+        city: { type: String },
+        street: { type: String },
     },
     locationCoords: {
         lat: { type: Number },
@@ -104,9 +95,7 @@ const usersSchema = new mongoose.Schema({
     phoneNumber: {
         type: String,
         unique: true,
-        sparse: true,
-        set: (v) => encrypt(v),
-        get: (v) => decrypt(v)
+        sparse: true
     },
     googleId: {
         type: String,
@@ -148,8 +137,7 @@ const usersSchema = new mongoose.Schema({
     }
 
 }, {
-    toJSON: { getters: true },
-    toObject: { getters: true }
+    timestamps: true
 });
 
 const User = mongoose.model("Users", usersSchema, "Users");

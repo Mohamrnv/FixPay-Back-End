@@ -1,8 +1,6 @@
 import mongoose from "mongoose";
 import { TaskStatus } from "../Utils/enums/taskStatus.js";
 
-import { encrypt, decrypt } from "../Utils/Encrypt/crypt.js";
-
 const taskSchema = new mongoose.Schema({
     customerId: {
         type: mongoose.Schema.Types.ObjectId,
@@ -18,17 +16,13 @@ const taskSchema = new mongoose.Schema({
         required: [true, "Task title is required"],
         trim: true,
         minLength: [5, "Title must be at least 5 characters"],
-        maxLength: [100, "Title cannot exceed 100 characters"],
-        set: (v) => encrypt(v),
-        get: (v) => decrypt(v)
+        maxLength: [100, "Title cannot exceed 100 characters"]
     },
     description: {
         type: String,
         required: [true, "Task description is required"],
         trim: true,
-        minLength: [10, "Description must be at least 10 characters"],
-        set: (v) => encrypt(v),
-        get: (v) => decrypt(v)
+        minLength: [10, "Description must be at least 10 characters"]
     },
     categoryId: {
         type: mongoose.Schema.Types.ObjectId,
@@ -43,9 +37,7 @@ const taskSchema = new mongoose.Schema({
     location: {
         type: String,
         required: [true, "Location is required"],
-        trim: true,
-        set: (v) => encrypt(v),
-        get: (v) => decrypt(v)
+        trim: true
     },
     locationCoords: {
         lat: { type: Number },
@@ -61,9 +53,7 @@ const taskSchema = new mongoose.Schema({
         default: []
     }
 }, {
-    timestamps: true,
-    toJSON: { getters: true },
-    toObject: { getters: true }
+    timestamps: true
 });
 
 const Task = mongoose.model("Task", taskSchema);
