@@ -1,52 +1,44 @@
-# Feature Implementation: Negotiation & Pre-Contract Chat
+# Worker Recommendation based on Location and Rating
 
-This plan covers the addition of a messaging system for user interaction and a multi-step bidding logic to allow for price negotiations between Customers and Workers.
+This plan covers adding a recommendation endpoint that suggests the nearest workers to a given task, based on the task's category and geographic coordinates. The results are ranked by proximity, displaying each worker's profile details, address, straight-line distance, OSRM driving distance and duration, and their rating.
 
 ## Proposed Changes
 
-### 1. Messaging Component [NEW]
-To allow users to discuss tasks before accepting offers.
+### Geolocation & Task Modules
 
-#### [NEW] [Message.model.js](file:///c:/Projects/FixPay/FixPay-Back-End-/src/Models/Message.model.js)
-- Fields: `taskId`, `senderId`, `receiverId`, `content`, `createdAt`.
-- Indexing: Compound index on `taskId`, `senderId`, and `receiverId` for fast retrieval of thread history.
+#### [NEW] [geo.js](file:///c:/New%20folder/Graduation%20Project/FixPay/FixPay-Back-End/src/Utils/geo.js)
+- Create a reusable geospatial utility file with the Haversine formula to compute geodesic (straight-line) distance in kilometers between two coordinates.
 
-#### [NEW] [Message.controller.js](file:///c:/Projects/FixPay/FixPay-Back-End-/src/Modules/Message/message.controller.js)
-- `sendMessage`: Validates that the users are either the task owner or a worker who has submitted an offer.
-- `getTaskMessages`: Retrieves the conversation history for a specific task between two users.
+#### [MODIFY] [task.controller.js](file:///c:/New%20folder/Graduation%20Project/FixPay/FixPay-Back-End/src/Modules/Task/task.controller.js)
+- Implement `getRecommendedWorkers`:
+  1. Fetch the target task by `taskId`.
+  2. Perform authorization checks (only the task's customer or an admin can access this).
+  3. Validate that the task has valid geographic coordinates (`locationCoords`).
+  4. Query the `Users` collection for active workers (`role: Roles.worker`) in the task's category (`categoryId`), filtering out deleted, banned, or suspended workers, and filtering to those who have set `locationCoords`.
+  5. Calculate straight-line distance for each worker and sort ascending.
+  6. Call the Open Source Routing Machine (OSRM) driving route API concurrently for the top 5 nearest workers to get estimated driving distance and time.
+  7. Return the recommended workers along with their coordinates, address, rating, straight-line distance, and estimated driving metrics.
 
-#### [NEW] [Message.Router.js](file:///c:/Projects/FixPay/FixPay-Back-End-/src/Routes/Message.Router.js)
-- Routes for sending and getting messages.
-- Protected by `verifyToken`.
+#### [MODIFY] [Task.Router.js](file:///c:/New%20folder/Graduation%20Project/FixPay/FixPay-Back-End/src/Routes/Task.Router.js)
+- Add the recommendation route:
+  `router.get("/:taskId/recommend-workers", verifyToken, allowedTo(Roles.customer, Roles.admin), getRecommendedWorkers);`
 
----
+### Testing
 
-### 2. Negotiation (Counter-Bidding) Logic
-
-#### [MODIFY] [Offer.model.js](file:///c:/Projects/FixPay/FixPay-Back-End-/src/Models/Offer.model.js)
-- Add `negotiationHistory`: Array of `{ price: Number, message: String, bidBy: ObjectId, createdAt: Date }`.
-- Update `price` and `message` to always reflect the *latest* proposed terms.
-- Add `status` enum extension: `pending`, `accepted`, `rejected`, `countered`.
-
-#### [MODIFY] [offer.controller.js](file:///c:/Projects/FixPay/FixPay-Back-End-/src/Modules/Offer/offer.controller.js)
-- `counterOffer`: A new endpoint allowing the Customer to propose a different price.
-    - Updates `status` to `countered`.
-    - Adds entry to `negotiationHistory`.
-- Update `acceptOffer`: Ensure it accepts the *latest* price in the offer object.
-- `updateOfferPrice` (Worker): Allowing the worker to respond to a customer's counter.
+#### [NEW] [recommendation.test.js](file:///c:/New%20folder/Graduation%20Project/FixPay/FixPay-Back-End/tests/recommendation.test.js)
+- Create integration tests covering:
+  - Successful recommendation of workers matching a task's category.
+  - Correct calculation and sorting of distances (nearer workers should come first).
+  - Showing worker ratings in the response payload.
+  - Proper authorization checks (only task customer and admins allowed).
+  - Validation checks when a task doesn't have coordinates.
 
 ---
-
-## Technical Considerations
-- **Authorization**: Only the Task owner can "Counter" an offer. Only the Worker who created the offer can respond to a counter.
-- **Task Lifecycle**: A task must still be in `open` status for negotiations to happen.
-- **Relational Integrity**: If the Task owner accepts *any* offer (or counter-offer), all other offers for that task are automatically rejected.
 
 ## Verification Plan
-1. **Chat Test**: Worker sends a message to Customer -> Customer views message -> Customer responds.
-2. **Negotiation Test**:
-    - Worker creates offer for 100 EGP.
-    - Customer counters with 80 EGP.
-    - Worker counters with 90 EGP.
-    - Customer accepts 90 EGP.
-    - Verify Task status changes to `assigned` and final price is 90 EGP.
+
+### Automated Tests
+- Run `npm run test` to verify the new endpoint behavior, including distance ranking, category filtering, and authorization.
+
+### Manual Verification
+- We can perform manual API validation by starting the development server and querying the GET `/api/tasks/:taskId/recommend-workers` endpoint using Postman or curl.

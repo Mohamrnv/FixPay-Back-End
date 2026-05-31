@@ -82,6 +82,7 @@ const collection = {
             item: [
                 { name: "List Open Tasks", request: { method: "GET", url: "{{baseUrl}}/tasks/open" } },
                 { name: "Get Task Offers", request: { method: "GET", url: "{{baseUrl}}/tasks/:taskId/offers" } },
+                { name: "Get Recommended Workers", request: { method: "GET", url: "{{baseUrl}}/tasks/:taskId/recommend-workers" } },
                 {
                     name: "Post Task",
                     request: {
