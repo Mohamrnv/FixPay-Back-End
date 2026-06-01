@@ -13,6 +13,7 @@ This document lists all available API endpoints in the FixPay backend.
 | :--- | :--- | :--- | :--- |
 | `GET` | `/` | List all users | Admin |
 | `GET` | `/:id` | Get user details by ID | Admin / Owner |
+| `GET` | `/:id/ai-result` | Get user's AI identity verification comparison image | Admin |
 | `PATCH` | `/:id` | Update user profile | Admin |
 | `PATCH` | `/assign-admin/:id` | Promote a user to Admin | Admin |
 | `PATCH` | `/suspend/:id` | Suspend or Permanently Ban a user | Admin |

@@ -7,6 +7,7 @@ import { jest } from '@jest/globals';
 
 describe('Identity Verification API', () => {
     let token;
+    let adminToken;
 
     beforeAll(async () => {
         await mongoose.model('Users').deleteMany({});
@@ -63,6 +64,27 @@ describe('Identity Verification API', () => {
         });
         if (loginRes.status !== 200) console.error("Identity User Login Failed:", loginRes.body);
         token = loginRes.body.token;
+
+        const adminData = {
+            name: { first: "Admin", last: "User" },
+            userName: "adminuser",
+            email: "admin@test.com",
+            password: "Password123",
+            confirmPassword: "Password123",
+            dateOfBirth: "01-01-1990",
+            gender: true,
+            phoneNumber: "01000000001",
+            ssn: "29001010000002",
+            role: "admin"
+        };
+        const adminRegRes = await request(app).post('/api/user/register').send(adminData);
+        if (adminRegRes.status !== 201) console.error("Admin Registration Failed:", adminRegRes.body);
+        await User.findOneAndUpdate({ email: adminData.email }, { verifiedAt: new Date() });
+        const adminLoginRes = await request(app).post('/api/user/login').send({
+            email: adminData.email,
+            password: "Password123"
+        });
+        adminToken = adminLoginRes.body.token;
     });
 
     afterAll(async () => {
@@ -116,5 +138,25 @@ describe('Identity Verification API', () => {
 
         expect(res.statusCode).toBe(400);
         expect(res.body.message).toContain('required');
+    });
+
+    it('should allow admin to fetch user AI result image', async () => {
+        const user = await User.findOne({ email: "verify@test.com" });
+        const res = await request(app)
+            .get(`/api/user/${user._id}/ai-result`)
+            .set('Authorization', `bearer ${adminToken}`);
+
+        expect(res.statusCode).toBe(200);
+        expect(res.body.status).toBe('success');
+        expect(res.body.data.resultImage).toBe('https://cloudinary.com/test-image.jpg');
+    });
+
+    it('should deny non-admin from fetching user AI result image', async () => {
+        const user = await User.findOne({ email: "verify@test.com" });
+        const res = await request(app)
+            .get(`/api/user/${user._id}/ai-result`)
+            .set('Authorization', `bearer ${token}`);
+
+        expect(res.statusCode).toBe(403);
     });
 });

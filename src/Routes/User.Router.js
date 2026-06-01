@@ -25,13 +25,15 @@ import {
   googleLogin,
   completeProfile,
   verifyIdentity,
-  reviewIdentityVerification
+  reviewIdentityVerification,
+  getUserAiResult
 } from "../Modules/User/user.controller.js";
 
 const router = Router();
 
 router.get("/", verifyToken, getAllUsers);
 router.get("/:id", verifyToken, getUserById);
+router.get("/:id/ai-result", verifyToken, allowedTo(Roles.admin), getUserAiResult);
 router.patch("/:id", verifyToken, allowedTo(Roles.admin), editUser);
 router.patch("/assign-admin/:id", verifyToken, allowedTo(Roles.admin), assignAdmin);
 router.patch("/suspend/:id", verifyToken, allowedTo(Roles.admin), suspendUser);
