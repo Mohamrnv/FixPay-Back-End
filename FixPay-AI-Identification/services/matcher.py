@@ -5,11 +5,11 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-_ID_THRESHOLD   = float(os.getenv("ID_THRESHOLD",   "0.38"))
+_ID_THRESHOLD   = float(os.getenv("ID_THRESHOLD",   "0.48"))
 _LIVE_THRESHOLD = float(os.getenv("LIVE_THRESHOLD", "0.45"))
 
-_HIGH_SIM   = 0.60
-_MEDIUM_SIM = 0.48
+_HIGH_SIM   = 0.70
+_MEDIUM_SIM = 0.58
 
 
 def _normalize(v: np.ndarray) -> np.ndarray:

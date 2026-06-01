@@ -83,6 +83,30 @@ const verifyIdentity = asyncWrapper(async (req, res, next) => {
             }
         }
 
+        // Upload result image to Cloudinary if it exists in the response
+        let resultImageSecureUrl = user.identityVerification?.resultImage || null;
+        console.log(`[Verify] data.result_image: ${data.result_image}`);
+        if (data.result_image) {
+            const localFilePath = path.join(process.cwd(), "FixPay-AI-Identification", data.result_image);
+            console.log(`[Verify] Resolved localFilePath: ${localFilePath}`);
+            const fileExists = fs.existsSync(localFilePath);
+            console.log(`[Verify] File exists: ${fileExists}`);
+            if (fileExists) {
+                try {
+                    console.log(`[Verify] Uploading to Cloudinary under folder FixPay/users/${req.currentUser._id}/ai_result ...`);
+                    const uploadResult = await cloudinary.uploader.upload(localFilePath, {
+                        folder: `FixPay/users/${req.currentUser._id}/ai_result`
+                    });
+                    resultImageSecureUrl = uploadResult.secure_url;
+                    console.log(`[Verify] Cloudinary upload success: ${resultImageSecureUrl}`);
+                } catch (uploadError) {
+                    console.error("[Cloudinary Upload Error]:", uploadError);
+                }
+            } else {
+                console.warn(`[Verify] Result image file not found at: ${localFilePath}`);
+            }
+        }
+
         const updateData = {
             "identityVerification.status": status,
             "identityVerification.verifiedAt": verifiedAt,
@@ -91,6 +115,10 @@ const verifyIdentity = asyncWrapper(async (req, res, next) => {
             "identityVerification.confidence": confidence,
             "identityVerification.failReason": failReason
         };
+
+        if (resultImageSecureUrl) {
+            updateData["identityVerification.resultImage"] = resultImageSecureUrl;
+        }
 
         await User.findByIdAndUpdate(req.currentUser._id, updateData);
 
@@ -103,7 +131,8 @@ const verifyIdentity = asyncWrapper(async (req, res, next) => {
                 similarity: similarity,
                 confidence: confidence,
                 threshold: data.threshold,
-                timings: data.timings
+                timings: data.timings,
+                resultImage: resultImageSecureUrl
             }
         });
 

@@ -19,6 +19,7 @@ describe('Identity Verification API', () => {
                         match: true,
                         similarity: 0.95,
                         liveness: true,
+                        result_image: "results/test_match_image.jpg",
                         extracted_data: {
                             national_id: "29001010000001",
                             birth_date: "1990-01-01"
@@ -28,6 +29,16 @@ describe('Identity Verification API', () => {
             }
             return Promise.resolve({ data: {} });
         });
+
+        // Create a dummy result file for the test
+        const fs = await import('fs');
+        const path = await import('path');
+        const testImageDir = path.join(process.cwd(), 'FixPay-AI-Identification', 'results');
+        if (!fs.existsSync(testImageDir)) {
+            fs.mkdirSync(testImageDir, { recursive: true });
+        }
+        const testImagePath = path.join(testImageDir, 'test_match_image.jpg');
+        fs.writeFileSync(testImagePath, 'fake-match-image-content');
 
         const userData = {
             name: { first: "Verify", last: "Me" },
@@ -54,6 +65,15 @@ describe('Identity Verification API', () => {
         token = loginRes.body.token;
     });
 
+    afterAll(async () => {
+        const fs = await import('fs');
+        const path = await import('path');
+        const testImagePath = path.join(process.cwd(), 'FixPay-AI-Identification', 'results', 'test_match_image.jpg');
+        if (fs.existsSync(testImagePath)) {
+            fs.unlinkSync(testImagePath);
+        }
+    });
+
     it('should verify identity successfully with mock AI response', async () => {
         // Creating dummy buffers to simulate image files
         const dummyImage = Buffer.from('fake-image-data');
@@ -67,10 +87,12 @@ describe('Identity Verification API', () => {
         expect(res.statusCode).toBe(200);
         expect(res.body.status).toBe('success');
         expect(res.body.match).toBe(true);
+        expect(res.body.details.resultImage).toBe('https://cloudinary.com/test-image.jpg');
         
         // Verify user state in DB
         const user = await User.findOne({ email: "verify@test.com" });
         expect(user.identityVerification.status).toBe('verified');
+        expect(user.identityVerification.resultImage).toBe('https://cloudinary.com/test-image.jpg');
     });
 
     it('should fail if images are missing', async () => {

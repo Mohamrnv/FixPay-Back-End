@@ -26,6 +26,7 @@ jest.mock('axios', () => ({
                     score: 0.95,
                     similarity: 0.95,
                     liveness: true,
+                    result_image: "results/test_match_image.jpg",
                     extracted_data: {
                         national_id: "29001010000001",
                         birth_date: "1990-01-01"

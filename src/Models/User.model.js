@@ -114,6 +114,7 @@ const usersSchema = new mongoose.Schema({
         liveness: { type: Boolean },
         verifiedAt: { type: Date },
         failReason: { type: String },
+        resultImage: { type: String },
     },
     categoryId: {
         type: mongoose.Schema.Types.ObjectId,
