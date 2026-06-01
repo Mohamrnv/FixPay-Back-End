@@ -63,15 +63,24 @@ class FaceDetector:
 
         if not faces:
             logger.warning("No face in ID ROI – falling back to full image.")
-            return self.detect_and_crop(image, source="id_card_fallback")
+            faces_full = self._detect_downscaled(image)
+            if not faces_full:
+                raise ValueError("No face detected in ID card.")
+            face_full = max(faces_full, key=lambda f: _bbox_area(f.bbox))
+            face_area = _bbox_area(face_full.bbox)
+            ratio = face_area / (H * W)
+            if ratio > 0.15:
+                raise ValueError("The ID card photo contains a face that is too large. Please upload the full ID card, not a selfie.")
+            return _crop_padded(image, face_full.bbox)
 
         # Largest face in ROI
         face  = max(faces, key=lambda f: _bbox_area(f.bbox))
-        # bbox is in ROI coordinates → convert to full-image coordinates
-        face.bbox[0] += 0        # ROI starts at x=0
-        face.bbox[1] += 0        # ROI starts at y=0
-        face.bbox[2] += 0
-        face.bbox[3] += 0
+        
+        # Check ratio on full image
+        face_area = _bbox_area(face.bbox)
+        ratio = face_area / (H * W)
+        if ratio > 0.15:
+            raise ValueError("The ID card photo contains a face that is too large. Please upload the full ID card, not a selfie.")
 
         return _crop_padded(image, face.bbox)
 
@@ -91,6 +100,14 @@ class FaceDetector:
 
         face = max(faces, key=lambda f: _bbox_area(f.bbox))
         logger.debug("[%s] %d face(s) found.", source, len(faces))
+        
+        # Check ratio on full image
+        H, W = image.shape[:2]
+        face_area = _bbox_area(face.bbox)
+        ratio = face_area / (H * W)
+        if source == "selfie" and ratio < 0.08:
+            raise ValueError("The live selfie face is too small. Please get closer to the camera and ensure it is not an ID card.")
+
         return _crop_padded(image, face.bbox)
 
     # ── Internal ──────────────────────────────────────────────────────────────
