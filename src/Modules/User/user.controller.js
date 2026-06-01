@@ -33,6 +33,10 @@ const verifyIdentity = asyncWrapper(async (req, res, next) => {
     const id_image_buffer = id_image[0].buffer;
     const live_image_buffer = live_image[0].buffer;
 
+    if (id_image_buffer.equals(live_image_buffer)) {
+        return next(new AppError("Both id_image and live_image cannot be the same image", 400));
+    }
+
     // Fetch user from DB
     const user = await User.findById(req.currentUser._id).select("+ssn +dateOfBirth");
     if (!user) return next(new AppError("User not found", 404));

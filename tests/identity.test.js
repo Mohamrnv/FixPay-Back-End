@@ -75,14 +75,15 @@ describe('Identity Verification API', () => {
     });
 
     it('should verify identity successfully with mock AI response', async () => {
-        // Creating dummy buffers to simulate image files
-        const dummyImage = Buffer.from('fake-image-data');
+        // Creating distinct dummy buffers to simulate different image files
+        const dummyIdImage = Buffer.from('fake-id-image-data');
+        const dummyLiveImage = Buffer.from('fake-live-image-data');
 
         const res = await request(app)
             .post('/api/user/verify-identity')
             .set('Authorization', `bearer ${token}`)
-            .attach('id_image', dummyImage, 'id.jpg')
-            .attach('live_image', dummyImage, 'face.jpg');
+            .attach('id_image', dummyIdImage, 'id.jpg')
+            .attach('live_image', dummyLiveImage, 'face.jpg');
 
         expect(res.statusCode).toBe(200);
         expect(res.body.status).toBe('success');
@@ -93,6 +94,19 @@ describe('Identity Verification API', () => {
         const user = await User.findOne({ email: "verify@test.com" });
         expect(user.identityVerification.status).toBe('verified');
         expect(user.identityVerification.resultImage).toBe('https://cloudinary.com/test-image.jpg');
+    });
+
+    it('should fail if ID image and live selfie are identical', async () => {
+        const dummyImage = Buffer.from('fake-image-data');
+
+        const res = await request(app)
+            .post('/api/user/verify-identity')
+            .set('Authorization', `bearer ${token}`)
+            .attach('id_image', dummyImage, 'id.jpg')
+            .attach('live_image', dummyImage, 'face.jpg');
+
+        expect(res.statusCode).toBe(400);
+        expect(res.body.message).toContain('cannot be the same image');
     });
 
     it('should fail if images are missing', async () => {
