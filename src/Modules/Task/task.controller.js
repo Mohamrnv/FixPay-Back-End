@@ -184,6 +184,40 @@ export const getCustomerTasks = asyncWrapper(async (req, res, next) => {
     });
 });
 
+export const getWorkerAssignedTasks = asyncWrapper(async (req, res, next) => {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+    const { status } = req.query;
+
+    const filter = { workerId: req.currentUser._id };
+    if (status) {
+        filter.status = status;
+    }
+
+    const tasks = await Task.find(filter)
+        .populate("categoryId", "name")
+        .populate("customerId", "userName name avatar")
+        .skip(skip)
+        .limit(limit)
+        .sort({ updatedAt: -1 });
+
+    const totalTasks = await Task.countDocuments(filter);
+
+    res.status(200).json({
+        status: httpStatus.SUCCESS,
+        data: {
+            tasks,
+            pagination: {
+                totalTasks,
+                page,
+                limit,
+                totalPages: Math.ceil(totalTasks / limit)
+            }
+        }
+    });
+});
+
 export const updateTask = asyncWrapper(async (req, res, next) => {
     const { taskId } = req.params;
     const { title, description, categoryId, budget, location, locationCoords } = req.body;

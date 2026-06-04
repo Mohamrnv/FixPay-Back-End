@@ -49,7 +49,11 @@ This document lists all available API endpoints in the FixPay backend.
 | Method | Endpoint | Description | Access |
 | :--- | :--- | :--- | :--- |
 | `GET` | `/open` | List all tasks with "open" status (paginated) | Authenticated |
+| `GET` | `/worker` | List open tasks matching the logged-in worker's category | Worker |
+| `GET` | `/worker/assigned` | List tasks currently assigned to the logged-in worker | Worker |
+| `GET` | `/customer` | List tasks created by the logged-in customer | Customer |
 | `GET` | `/:taskId/offers` | View all offers submitted for a task | Customer (Owner) / Admin |
+| `GET` | `/:taskId/recommend-workers` | Get recommendations for nearest workers who sent offers | Customer (Owner) / Admin |
 | `POST` | `/` | Post a new task (Accepts `locationCoords`) | Customer |
 | `PATCH` | `/:taskId` | Update task details | Customer (Owner) / Admin |
 | `DELETE` | `/:taskId` | Delete a task | Customer (Owner) / Admin |

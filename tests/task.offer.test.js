@@ -135,5 +135,15 @@ describe('Tasks and Offers API', () => {
             expect(task.status).toBe('assigned');
             expect(task.workerId).toBeDefined();
         });
+
+        it('should show the assigned task in the worker\'s assigned tasks list', async () => {
+            const res = await request(app)
+                .get('/api/tasks/worker/assigned')
+                .set('Authorization', `bearer ${workerToken}`);
+
+            expect(res.statusCode).toBe(200);
+            expect(res.body.data.tasks.length).toBeGreaterThan(0);
+            expect(res.body.data.tasks[0]._id.toString()).toBe(taskId.toString());
+        });
     });
 });

@@ -91,3 +91,9 @@ Ai_Face_identification/id_env/
 *.pt
 *.pth
 *.onnx
+
+# =========================
+# Temporary files and Docs
+# =========================
+scratch/
+*.docx
