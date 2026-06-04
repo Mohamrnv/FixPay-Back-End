@@ -43,6 +43,10 @@ const usersSchema = new mongoose.Schema({
         type: Number, //{1->5}
         default: 5
     },
+    ratingsCount: {
+        type: Number,
+        default: 0
+    },
     ssn: {
         type: String,
         unique: true,

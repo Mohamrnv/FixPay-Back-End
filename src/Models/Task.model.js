@@ -51,6 +51,12 @@ const taskSchema = new mongoose.Schema({
     images: {
         type: [String],
         default: []
+    },
+    customerRatingOfWorker: {
+        type: Number
+    },
+    workerRatingOfCustomer: {
+        type: Number
     }
 }, {
     timestamps: true

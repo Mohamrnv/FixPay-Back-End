@@ -130,7 +130,7 @@ describe('Tasks and Offers API', () => {
 
             expect(res.statusCode).toBe(200);
             expect(res.body.message).toContain('accepted');
-            
+
             const task = await Task.findById(taskId);
             expect(task.status).toBe('assigned');
             expect(task.workerId).toBeDefined();
@@ -144,6 +144,78 @@ describe('Tasks and Offers API', () => {
             expect(res.statusCode).toBe(200);
             expect(res.body.data.tasks.length).toBeGreaterThan(0);
             expect(res.body.data.tasks[0]._id.toString()).toBe(taskId.toString());
+        });
+
+        it('should allow customer to complete the task', async () => {
+            const res = await request(app)
+                .patch(`/api/tasks/${taskId}/complete`)
+                .set('Authorization', `bearer ${customerToken}`);
+
+            expect(res.statusCode).toBe(200);
+            expect(res.body.message).toContain('completed successfully');
+
+            const completedTask = await Task.findById(taskId);
+            expect(completedTask.status).toBe('completed');
+        });
+
+        it('should show in completed tasks list for both customer and worker', async () => {
+            // Customer completed tasks
+            const resCust = await request(app)
+                .get('/api/tasks/completed')
+                .set('Authorization', `bearer ${customerToken}`);
+            expect(resCust.statusCode).toBe(200);
+            expect(resCust.body.data.tasks.length).toBeGreaterThan(0);
+
+            // Worker completed tasks
+            const resWork = await request(app)
+                .get('/api/tasks/completed')
+                .set('Authorization', `bearer ${workerToken}`);
+            expect(resWork.statusCode).toBe(200);
+            expect(resWork.body.data.tasks.length).toBeGreaterThan(0);
+        });
+
+        it('should allow customer to rate the worker and update rating/ratingsCount', async () => {
+            const res = await request(app)
+                .post(`/api/tasks/${taskId}/rate`)
+                .set('Authorization', `bearer ${customerToken}`)
+                .send({ rating: 4 });
+
+            expect(res.statusCode).toBe(200);
+            expect(res.body.message).toContain('Rating submitted successfully');
+
+            const completedTask = await Task.findById(taskId);
+            expect(completedTask.customerRatingOfWorker).toBe(4);
+
+            const worker = await User.findById(completedTask.workerId);
+            expect(worker.rating).toBe(4);
+            expect(worker.ratingsCount).toBe(1);
+        });
+
+        it('should allow worker to rate the customer and update rating/ratingsCount', async () => {
+            const res = await request(app)
+                .post(`/api/tasks/${taskId}/rate`)
+                .set('Authorization', `bearer ${workerToken}`)
+                .send({ rating: 5 });
+
+            expect(res.statusCode).toBe(200);
+            expect(res.body.message).toContain('Rating submitted successfully');
+
+            const completedTask = await Task.findById(taskId);
+            expect(completedTask.workerRatingOfCustomer).toBe(5);
+
+            const customer = await User.findById(completedTask.customerId);
+            expect(customer.rating).toBe(5);
+            expect(customer.ratingsCount).toBe(1);
+        });
+
+        it('should prevent rating again for the same task', async () => {
+            const res = await request(app)
+                .post(`/api/tasks/${taskId}/rate`)
+                .set('Authorization', `bearer ${customerToken}`)
+                .send({ rating: 3 });
+
+            expect(res.statusCode).toBe(400);
+            expect(res.body.message).toContain('already rated');
         });
     });
 });

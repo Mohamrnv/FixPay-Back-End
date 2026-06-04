@@ -127,19 +127,19 @@ export const getWorkerTasks = asyncWrapper(async (req, res, next) => {
         return next(new AppError("Worker has no assigned category", 400, httpStatus.FAIL));
     }
 
-    const tasks = await Task.find({ 
-        status: TaskStatus.OPEN, 
-        categoryId: categoryId 
+    const tasks = await Task.find({
+        status: TaskStatus.OPEN,
+        categoryId: categoryId
     })
-    .populate("categoryId", "name")
-    .populate("customerId", "userName name avatar")
-    .skip(skip)
-    .limit(limit)
-    .sort({ createdAt: -1 });
+        .populate("categoryId", "name")
+        .populate("customerId", "userName name avatar")
+        .skip(skip)
+        .limit(limit)
+        .sort({ createdAt: -1 });
 
-    const totalTasks = await Task.countDocuments({ 
-        status: TaskStatus.OPEN, 
-        categoryId: categoryId 
+    const totalTasks = await Task.countDocuments({
+        status: TaskStatus.OPEN,
+        categoryId: categoryId
     });
 
     res.status(200).json({
@@ -296,6 +296,145 @@ export const deleteTask = asyncWrapper(async (req, res, next) => {
     });
 });
 
+export const completeTask = asyncWrapper(async (req, res, next) => {
+    const { taskId } = req.params;
+    const customerId = req.currentUser._id;
+
+    const task = await Task.findById(taskId);
+    if (!task) {
+        return next(new AppError("Task not found", 404, httpStatus.FAIL));
+    }
+
+    if (task.customerId.toString() !== customerId.toString()) {
+        return next(new AppError("Only the task owner can complete it", 403, httpStatus.FAIL));
+    }
+
+    if (task.status !== TaskStatus.ASSIGNED && task.status !== TaskStatus.IN_PROGRESS) {
+        return next(new AppError("Task must be assigned or in progress to be completed", 400, httpStatus.FAIL));
+    }
+
+    task.status = TaskStatus.COMPLETED;
+    await task.save();
+
+    res.status(200).json({
+        status: httpStatus.SUCCESS,
+        message: "Task completed successfully",
+        data: { task }
+    });
+});
+
+export const getCompletedTasks = asyncWrapper(async (req, res, next) => {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const userId = req.currentUser._id;
+    const filter = {
+        status: TaskStatus.COMPLETED,
+        $or: [
+            { customerId: userId },
+            { workerId: userId }
+        ]
+    };
+
+    const tasks = await Task.find(filter)
+        .populate("categoryId", "name")
+        .populate("customerId", "userName name avatar")
+        .populate("workerId", "userName name avatar")
+        .skip(skip)
+        .limit(limit)
+        .sort({ updatedAt: -1 });
+
+    const totalTasks = await Task.countDocuments(filter);
+
+    res.status(200).json({
+        status: httpStatus.SUCCESS,
+        data: {
+            tasks,
+            pagination: {
+                totalTasks,
+                page,
+                limit,
+                totalPages: Math.ceil(totalTasks / limit)
+            }
+        }
+    });
+});
+
+export const rateTaskParticipant = asyncWrapper(async (req, res, next) => {
+    const { taskId } = req.params;
+    const { rating } = req.body;
+    const userId = req.currentUser._id;
+
+    const ratingVal = Number(rating);
+    if (isNaN(ratingVal) || ratingVal < 1 || ratingVal > 5) {
+        return next(new AppError("Rating must be a number between 1 and 5", 400, httpStatus.FAIL));
+    }
+
+    const task = await Task.findById(taskId);
+    if (!task) {
+        return next(new AppError("Task not found", 404, httpStatus.FAIL));
+    }
+
+    if (task.status !== TaskStatus.COMPLETED) {
+        return next(new AppError("Cannot rate participants for an incomplete task", 400, httpStatus.FAIL));
+    }
+
+    let targetUserId;
+    let isCustomer = false;
+
+    if (task.customerId.toString() === userId.toString()) {
+        isCustomer = true;
+        if (task.customerRatingOfWorker !== undefined && task.customerRatingOfWorker !== null) {
+            return next(new AppError("You have already rated the worker for this task", 400, httpStatus.FAIL));
+        }
+        targetUserId = task.workerId;
+    } else if (task.workerId && task.workerId.toString() === userId.toString()) {
+        if (task.workerRatingOfCustomer !== undefined && task.workerRatingOfCustomer !== null) {
+            return next(new AppError("You have already rated the customer for this task", 400, httpStatus.FAIL));
+        }
+        targetUserId = task.customerId;
+    } else {
+        return next(new AppError("You are not authorized to rate participants for this task", 403, httpStatus.FAIL));
+    }
+
+    if (!targetUserId) {
+        return next(new AppError("Target participant not found on this task", 400, httpStatus.FAIL));
+    }
+
+    const targetUser = await User.findById(targetUserId);
+    if (!targetUser) {
+        return next(new AppError("User being rated does not exist", 404, httpStatus.FAIL));
+    }
+
+    // Update target user's rating & ratingsCount
+    const currentRating = targetUser.rating || 5;
+    const count = targetUser.ratingsCount || 0;
+    const newRating = ((currentRating * count) + ratingVal) / (count + 1);
+
+    targetUser.rating = parseFloat(newRating.toFixed(2));
+    targetUser.ratingsCount = count + 1;
+    await targetUser.save();
+
+    // Store the rating on the task
+    if (isCustomer) {
+        task.customerRatingOfWorker = ratingVal;
+    } else {
+        task.workerRatingOfCustomer = ratingVal;
+    }
+    await task.save();
+
+    res.status(200).json({
+        status: httpStatus.SUCCESS,
+        message: "Rating submitted successfully",
+        data: {
+            task,
+            targetUserRating: targetUser.rating,
+            targetUserRatingsCount: targetUser.ratingsCount
+        }
+    });
+});
+
 export const getRecommendedWorkers = asyncWrapper(async (req, res, next) => {
     const { taskId } = req.params;
 
@@ -337,9 +476,9 @@ export const getRecommendedWorkers = asyncWrapper(async (req, res, next) => {
             { lat: task.locationCoords.lat, lng: task.locationCoords.lng },
             { lat: worker.locationCoords.lat, lng: worker.locationCoords.lng }
         );
-        
+
         const workerOffer = offers.find(o => o.workerId.toString() === worker._id.toString());
-        
+
         return {
             worker: {
                 _id: worker._id,
